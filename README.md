@@ -19,7 +19,7 @@ Type `in` after the keyword to list input devices instead, like `audio in` or `a
 
 ### Microphone
 
-Mute or unmute the microphone via the `mic` keyword. Muting remembers the input level, and unmuting restores it. Below the toggle are the input devices, to switch microphones.
+Mute or unmute the microphone via the `mic` keyword. Muting remembers the input level, and unmuting restores it; microphones without an adjustable level are muted with their own mute switch. Below the toggle are the input devices, to switch microphones.
 
 ![Muting the microphone](images/mic.png)
 
@@ -52,7 +52,7 @@ When [displayplacer](https://github.com/jakehilborn/displayplacer) is installed,
 
 ### AirPods
 
-Change the listening mode of your AirPods or Beats via the `anc` keyword: Noise Cancellation, Transparency, Adaptive or Off. The headphones must be the current output.
+Change the listening mode of your AirPods or Beats via the `anc` keyword: Noise Cancellation, Transparency, Adaptive or Off. The headphones must be the current output. It works in every language macOS supports.
 
 ![AirPods listening modes](images/anc.png)
 

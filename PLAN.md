@@ -35,7 +35,9 @@ Raycast demand this workflow replaces (downloads, 2026-09-26):
 ## Implementation notes (v1.0)
 - JXA bridge: structs (AudioObjectPropertyAddress, UInt32 out-params) go through NSMutableData byte buffers; CFStringRef out-params bind as `id *`; CGDisplayConfigRef is held in a `void **` Ref; the HiDPI option key's real value is `"kCGDisplayResolution"`.
 - Verified on real hardware read-only (macOS 27, Apple silicon): device listing, display modes, brightness read. Setters were verified only in dry-run (`DA_DRY_RUN=1`) plus no-op calls (process-local CoreAudio property, `setVolume` with the current value).
-- Not verified on real hardware: the Control Center automation for `anc` (no AirPods connected; macOS 27 moved menu extras to MenuBarAgent), BetterDisplay's CLI syntax (`-displayID`, `-feature=brightness`, taken from the Raycast extension) and m1ddc's `display list` format.
+- `anc` recognises the Sound menu rows by Control Center's own labels, read from `ControlCenter.app/Contents/Resources/{ListeningMode,Sound}.loctable` in the user's language (falls back to English names and row structure when the tables are missing).
+- m1ddc: `display list detailed` + `display id=<CGDisplayID>` (m1ddc 1.2.0, checked against its source); BetterDisplay: `get|set -displayID=N -feature=brightness [-value=0.70]` (wiki "Integration features, CLI" + the Raycast extension); displayplacer: args from the last `displayplacer "…"` line of `displayplacer list` (README v1.4 format).
+- Not verified on real hardware: the Control Center automation for `anc` (no AirPods connected; on macOS 27 System Events saw no menu bar items from this terminal), the CoreAudio mute switch for USB microphones, the two CLIs against real monitors, and brightness on Intel Macs (DisplayServices is present there too, but untested).
 - To check in real Alfred before release: `anc` with AirPods Pro/Max in English and another language; `res` switch and restore; `layout` restore with two displays; `bright` on an external display.
 
 ## Milestones
