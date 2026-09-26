@@ -217,6 +217,8 @@ function caBind(out) {
     ObjC.import("CoreAudio");
     ObjC.bindFunction("AudioObjectGetPropertyDataSize", ["int", ["unsigned int", "void *", "unsigned int", "void *", "void *"]]);
     ObjC.bindFunction("AudioObjectSetPropertyData", ["int", ["unsigned int", "void *", "unsigned int", "void *", "unsigned int", "void *"]]);
+    ObjC.bindFunction("AudioObjectHasProperty", ["bool", ["unsigned int", "void *"]]);
+    ObjC.bindFunction("AudioObjectIsPropertySettable", ["int", ["unsigned int", "void *", "void *"]]);
   }
   // The last argument is a CFStringRef* for string properties and a plain buffer otherwise.
   if (CA.bound !== out) {
@@ -256,6 +258,14 @@ function caString(obj, sel, scope) {
   } catch (e) {
     return "";
   }
+}
+// true when the property exists and can be changed (Boolean out-param: one byte)
+function caSettable(obj, sel, scope) {
+  caBind(CA.bound || "ptr");
+  const addr = caAddr(sel, scope);
+  if (!$.AudioObjectHasProperty(obj, addr.mutableBytes)) return false;
+  const out = $.NSMutableData.dataWithLength(4);
+  return $.AudioObjectIsPropertySettable(obj, addr.mutableBytes, out.mutableBytes) === 0 && binOf(out).charCodeAt(0) !== 0;
 }
 function caSetU32(obj, sel, value, scope) {
   caBind(CA.bound || "ptr");
@@ -439,6 +449,12 @@ const REAL = {
       return { output: null, input: null, alert: null, muted: false };
     }
   },
+  // the device's own input mute switch (kAudioDevicePropertyMute): true/false, or null without one
+  inputMute(id) {
+    if (!caSettable(id, "mute", "inpt")) return null;
+    const v = caU32(id, "mute", "inpt");
+    return v === null ? null : v === 1;
+  },
   displays: realDisplays,
   brightness: realBrightness,
 };
@@ -452,6 +468,10 @@ function fixtureHW(f) {
     audioDevices: () => (f.audio && f.audio.devices) || [],
     audioDefaults: () => (f.audio && f.audio.defaults) || {},
     volume: () => Object.assign({ output: null, input: null, alert: null, muted: false }, f.audio && f.audio.volume),
+    inputMute: (id) => {
+      const d = ((f.audio && f.audio.devices) || []).find((x) => x.id === id);
+      return d && typeof d.muteIn === "boolean" ? d.muteIn : null;
+    },
     displays,
     brightness: (id) => {
       const d = (f.displays || []).find((x) => x.id === id);
@@ -469,6 +489,12 @@ function setDefaultDevice(which, dev) {
   if (DRY) return dry(`AudioObjectSetPropertyData(kAudioObjectSystemObject, '${sel}', device=${dev.id} "${dev.name}" uid=${dev.uid})`);
   const st = caSetU32(SYSTEM_OBJECT, sel, dev.id);
   if (st !== 0) throw new Error(`CoreAudio refused the change (error ${st})`);
+}
+
+function setInputMute(dev, on) {
+  if (DRY) return dry(`AudioObjectSetPropertyData(device=${dev.id}, 'mute' input, ${on ? 1 : 0})`);
+  const st = caSetU32(dev.id, "mute", on ? 1 : 0, "inpt");
+  if (st !== 0) throw new Error(`CoreAudio refused to ${on ? "mute" : "unmute"} ${clean(dev.name)} (error ${st})`);
 }
 
 function setVolume(fields) {
@@ -654,10 +680,21 @@ function micItems(query) {
   const q = query.trim();
   const vol = HW.volume();
   const name = currentDeviceName("input");
+  const dev = currentInputDevice();
+  const hwMute = dev ? HW.inputMute(dev.id) : null;
   const items = [];
+  const toggleRow = (muted, detail) => ({
+    title: muted ? "Unmute microphone" : "Mute microphone",
+    subtitle: `${name} · ${muted ? "Muted" : detail}`,
+    arg: action("mic-toggle"),
+    icon: icon(muted ? "mic_off" : "mic"),
+  });
   if (!name) items.push(info("No input device", "Connect a microphone or check System Settings › Sound › Input", "error"));
-  else if (vol.input === null) items.push(info(`${name} has no adjustable input level`, "It can't be muted from here", "error"));
-  else {
+  else if (vol.input === null) {
+    // no software level (some USB microphones): use the device's own mute switch if it has one
+    if (hwMute === null) items.push(info(`${name} has no adjustable input level`, "It can't be muted from here", "error"));
+    else if (!q || matches(q, "mute unmute toggle microphone")) items.push(toggleRow(hwMute, "On"));
+  } else {
     const level = parseLevel(q);
     if (level !== null) {
       if (level > 100) return [info("Input level goes from 0 to 100", "Type a number like 70", "error")];
@@ -668,14 +705,8 @@ function micItems(query) {
         icon: icon(level === 0 ? "mic_off" : "mic"),
       }];
     }
-    const muted = vol.input === 0;
-    if (!q || matches(q, "mute unmute toggle microphone"))
-      items.push({
-        title: muted ? "Unmute microphone" : "Mute microphone",
-        subtitle: `${name} · ${muted ? "Muted" : `Input level ${pct(vol.input)}`}`,
-        arg: action("mic-toggle"),
-        icon: icon(muted ? "mic_off" : "mic"),
-      });
+    const muted = vol.input === 0 || hwMute === true;
+    if (!q || matches(q, "mute unmute toggle microphone")) items.push(toggleRow(muted, `Input level ${pct(vol.input)}`));
   }
   let rows = [];
   try {
@@ -698,19 +729,38 @@ function defaultUnmuteLevel() {
   return n > 0 && n <= 100 ? n : 75;
 }
 
+function currentInputDevice() {
+  const id = HW.audioDefaults().input;
+  return HW.audioDevices().find((x) => x.id === id) || null;
+}
+
+// Mutes with the input level (remembered for unmuting) and, when the level can't be changed,
+// with the device's own mute switch (kAudioDevicePropertyMute), as some USB microphones need.
 function micToggle(forceMute) {
   const vol = HW.volume();
   const name = currentDeviceName("input");
-  if (!name) return "No input device";
-  if (vol.input === null) return `${name} has no adjustable input level`;
+  const dev = currentInputDevice();
+  if (!name || !dev) return "No input device";
+  const hwMute = HW.inputMute(dev.id);
+  if (vol.input === null) {
+    if (hwMute === null) return `${name} has no adjustable input level`;
+    const mute = forceMute === undefined ? !hwMute : forceMute;
+    setInputMute(dev, mute);
+    return mute ? `🔇 Microphone muted · ${name}` : `🎙 Microphone on · ${name}`;
+  }
   const { path, state } = micState();
-  const mute = forceMute === undefined ? vol.input > 0 : forceMute;
+  const mute = forceMute === undefined ? !(vol.input === 0 || hwMute === true) : forceMute;
   if (mute) {
     if (vol.input > 0) writeJSON(path, Object.assign(state, { level: vol.input }));
     setVolume({ inputVolume: 0 });
-    if (!DRY && (HW.volume().input || 0) > 0) return `${name} ignored the change: it has no software input level`;
+    if (!DRY && (HW.volume().input || 0) > 0) {
+      if (hwMute === null) return `${name} ignored the change: it has no software input level`;
+      setInputMute(dev, true);
+    }
     return `🔇 Microphone muted · ${name}`;
   }
+  if (hwMute === true) setInputMute(dev, false);
+  if (vol.input > 0 && hwMute === true) return `🎙 Microphone on · ${pct(vol.input)} · ${name}`;
   const level = state.level > 0 && state.level <= 100 ? Math.round(state.level) : defaultUnmuteLevel();
   setVolume({ inputVolume: level });
   return `🎙 Microphone on · ${level}% · ${name}`;

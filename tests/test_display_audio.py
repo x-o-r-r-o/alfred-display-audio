@@ -908,6 +908,30 @@ esac
         self.assertEqual(arg["uid"], "e1")  # the real device, not the cleaned name
         self.assertIn('device=4', act(json.dumps(arg), fx))
 
+    def test_mic_without_level_uses_the_device_mute(self):
+        # USB microphones such as a Blue Yeti have no software input level but a mute switch
+        yeti = dict(dev(70, "Yeti Stereo Microphone", "yeti", "usb", inp=2), muteIn=False)
+        fx = fixture(audio=audio(DEVICES + [yeti], input=70, vol={"input": None}))
+        it = sf("mic", "", fx)
+        self.assertEqual(it[0]["title"], "Mute microphone")
+        out = act(it[0]["arg"], fx)
+        self.assertIn("DRY RUN: AudioObjectSetPropertyData(device=70, 'mute' input, 1)", out)
+        self.assertIn("Microphone muted", out)
+        muted = fixture(audio=audio(DEVICES + [dict(yeti, muteIn=True)], input=70, vol={"input": None}))
+        self.assertEqual(sf("mic", "", muted)[0]["title"], "Unmute microphone")
+        self.assertIn("'mute' input, 0)", act({"op": "mic-toggle"}, muted))
+        # without a mute switch either: explained, never a silent no-op
+        self.assertIn("no adjustable input level", sf("mic", "", fixture(audio=audio(DEVICES + [yeti | {"muteIn": None}], input=70, vol={"input": None})))[0]["title"])
+
+    def test_unmute_clears_the_device_mute_too(self):
+        d = data_dir("pass4-hwmute")
+        mic = dict(DEVICES[0], muteIn=True)
+        fx = fixture(audio=audio([mic] + DEVICES[1:], vol={"input": 60}))
+        self.assertEqual(sf("mic", "", fx, data=d)[0]["title"], "Unmute microphone")
+        out = act({"op": "mic-toggle"}, fx, data=d)
+        self.assertIn("'mute' input, 0)", out)
+        self.assertNotIn("set volume", out)  # the level was never lowered
+
     def test_layout_name_is_one_line(self):
         d = data_dir("pass4-name")
         fx = fixture(displays=[mac()])
