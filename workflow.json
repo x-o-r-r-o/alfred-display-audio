@@ -1,0 +1,345 @@
+{
+  "bundleid": "io.github.x-o-r-r-o.display-audio",
+  "name": "Display & Audio Control",
+  "description": "Switch audio devices, mute the mic, change resolution and brightness, restore display arrangements and AirPods modes",
+  "category": "Productivity",
+  "createdby": "x-o-r-r-o",
+  "webaddress": "https://github.com/x-o-r-r-o/alfred-display-audio",
+  "version": "1.0.0",
+  "variablesdontexport": [],
+  "config": [
+    {
+      "type": "textfield",
+      "variable": "keyword_audio",
+      "label": "Keywords",
+      "description": "Audio devices and volume",
+      "config": {
+        "default": "audio",
+        "placeholder": "audio",
+        "required": true,
+        "trim": true
+      }
+    },
+    {
+      "type": "textfield",
+      "variable": "keyword_mic",
+      "label": "",
+      "description": "Microphone mute and input devices",
+      "config": {
+        "default": "mic",
+        "placeholder": "mic",
+        "required": true,
+        "trim": true
+      }
+    },
+    {
+      "type": "textfield",
+      "variable": "keyword_res",
+      "label": "",
+      "description": "Display resolution",
+      "config": {
+        "default": "res",
+        "placeholder": "res",
+        "required": true,
+        "trim": true
+      }
+    },
+    {
+      "type": "textfield",
+      "variable": "keyword_bright",
+      "label": "",
+      "description": "Brightness",
+      "config": {
+        "default": "bright",
+        "placeholder": "bright",
+        "required": true,
+        "trim": true
+      }
+    },
+    {
+      "type": "textfield",
+      "variable": "keyword_layout",
+      "label": "",
+      "description": "Display arrangements",
+      "config": {
+        "default": "layout",
+        "placeholder": "layout",
+        "required": true,
+        "trim": true
+      }
+    },
+    {
+      "type": "textfield",
+      "variable": "keyword_anc",
+      "label": "",
+      "description": "AirPods listening mode",
+      "config": {
+        "default": "anc",
+        "placeholder": "anc",
+        "required": true,
+        "trim": true
+      }
+    },
+    {
+      "type": "popupbutton",
+      "variable": "res_refresh",
+      "label": "Resolutions",
+      "description": "",
+      "config": {
+        "default": "highest",
+        "pairs": [
+          [
+            "Highest refresh rate per resolution",
+            "highest"
+          ],
+          [
+            "Every refresh rate",
+            "all"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "checkbox",
+      "variable": "res_lowres",
+      "label": "",
+      "description": "Non-HiDPI modes make text tiny on Retina displays.",
+      "config": {
+        "default": false,
+        "required": false,
+        "text": "Show low-resolution modes on Retina displays"
+      }
+    },
+    {
+      "type": "textfield",
+      "variable": "mic_level",
+      "label": "Unmute level",
+      "description": "Microphone level (%) when unmuting if no earlier level is remembered",
+      "config": {
+        "default": "75",
+        "placeholder": "75",
+        "required": false,
+        "trim": true
+      }
+    },
+    {
+      "type": "popupbutton",
+      "variable": "anc_toggle_a",
+      "label": "AirPods Hotkey",
+      "description": "",
+      "config": {
+        "default": "Noise Cancellation",
+        "pairs": [
+          [
+            "Noise Cancellation",
+            "Noise Cancellation"
+          ],
+          [
+            "Transparency",
+            "Transparency"
+          ],
+          [
+            "Adaptive",
+            "Adaptive"
+          ],
+          [
+            "Off",
+            "Off"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "popupbutton",
+      "variable": "anc_toggle_b",
+      "label": "",
+      "description": "The Hotkey switches between these two listening modes.",
+      "config": {
+        "default": "Transparency",
+        "pairs": [
+          [
+            "Transparency",
+            "Transparency"
+          ],
+          [
+            "Noise Cancellation",
+            "Noise Cancellation"
+          ],
+          [
+            "Adaptive",
+            "Adaptive"
+          ],
+          [
+            "Off",
+            "Off"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "popupbutton",
+      "variable": "anc_three",
+      "label": "AirPods modes",
+      "description": "Used only when the Sound menu shows three modes in a language other than English.",
+      "config": {
+        "default": "auto",
+        "pairs": [
+          [
+            "Automatic",
+            "auto"
+          ],
+          [
+            "Off, Transparency, Noise Cancellation",
+            "off"
+          ],
+          [
+            "Transparency, Adaptive, Noise Cancellation",
+            "adaptive"
+          ]
+        ]
+      }
+    }
+  ],
+  "objects": [
+    {
+      "id": "sf_audio",
+      "type": "scriptfilter",
+      "keyword": "{var:keyword_audio}",
+      "title": "Audio Devices",
+      "subtext": "Switch output or input, set the volume",
+      "script": "osascript -l JavaScript ./displayaudio.js audio \"$1\""
+    },
+    {
+      "id": "sf_mic",
+      "type": "scriptfilter",
+      "keyword": "{var:keyword_mic}",
+      "title": "Microphone",
+      "subtext": "Mute, unmute or switch input",
+      "script": "osascript -l JavaScript ./displayaudio.js mic \"$1\""
+    },
+    {
+      "id": "sf_res",
+      "type": "scriptfilter",
+      "keyword": "{var:keyword_res}",
+      "title": "Display Resolution",
+      "subtext": "Switch display modes",
+      "script": "osascript -l JavaScript ./displayaudio.js res \"$1\""
+    },
+    {
+      "id": "sf_bright",
+      "type": "scriptfilter",
+      "keyword": "{var:keyword_bright}",
+      "title": "Brightness",
+      "subtext": "Set display brightness",
+      "script": "osascript -l JavaScript ./displayaudio.js bright \"$1\"",
+      "queuedelaymode": 1
+    },
+    {
+      "id": "sf_layout",
+      "type": "scriptfilter",
+      "keyword": "{var:keyword_layout}",
+      "title": "Display Arrangements",
+      "subtext": "Save and restore display arrangements",
+      "script": "osascript -l JavaScript ./displayaudio.js layout \"$1\""
+    },
+    {
+      "id": "sf_anc",
+      "type": "scriptfilter",
+      "keyword": "{var:keyword_anc}",
+      "title": "AirPods Listening Mode",
+      "subtext": "Noise Cancellation, Transparency, Adaptive or Off",
+      "script": "osascript -l JavaScript ./displayaudio.js anc \"$1\""
+    },
+    {
+      "id": "hk_mic",
+      "type": "hotkey",
+      "note": "Toggle microphone mute"
+    },
+    {
+      "id": "hk_anc",
+      "type": "hotkey",
+      "note": "Switch AirPods listening mode"
+    },
+    {
+      "id": "act",
+      "type": "script",
+      "script": "osascript -l JavaScript ./displayaudio.js act \"$1\"",
+      "note": "Runs the selected action"
+    },
+    {
+      "id": "mic_toggle",
+      "type": "script",
+      "script": "osascript -l JavaScript ./displayaudio.js act '{\"op\":\"mic-toggle\"}'"
+    },
+    {
+      "id": "anc_toggle",
+      "type": "script",
+      "script": "osascript -l JavaScript ./displayaudio.js act '{\"op\":\"anc-toggle\"}'"
+    },
+    {
+      "id": "notify",
+      "type": "notification"
+    }
+  ],
+  "connections": [
+    {
+      "from": "sf_audio",
+      "to": "act"
+    },
+    {
+      "from": "sf_mic",
+      "to": "act"
+    },
+    {
+      "from": "sf_res",
+      "to": "act"
+    },
+    {
+      "from": "sf_bright",
+      "to": "act"
+    },
+    {
+      "from": "sf_layout",
+      "to": "act"
+    },
+    {
+      "from": "sf_anc",
+      "to": "act"
+    },
+    {
+      "from": "sf_audio",
+      "to": "act",
+      "mod": "cmd"
+    },
+    {
+      "from": "sf_mic",
+      "to": "act",
+      "mod": "cmd"
+    },
+    {
+      "from": "sf_layout",
+      "to": "act",
+      "mod": "alt"
+    },
+    {
+      "from": "hk_mic",
+      "to": "mic_toggle"
+    },
+    {
+      "from": "hk_anc",
+      "to": "anc_toggle"
+    },
+    {
+      "from": "act",
+      "to": "notify"
+    },
+    {
+      "from": "mic_toggle",
+      "to": "notify"
+    },
+    {
+      "from": "anc_toggle",
+      "to": "notify"
+    }
+  ]
+}

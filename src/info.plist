@@ -7,48 +7,826 @@
 	<key>category</key>
 	<string>Productivity</string>
 	<key>connections</key>
-	<dict/>
+	<dict>
+		<key>025E4B35-F531-50D0-8772-75D428B9A9C2</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>524288</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>3D578AA6-A244-5FF9-845B-4877F08701A9</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>5794098C-B646-5F90-86E4-1C5DC798380C</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>5D498407-47F8-53D9-8AC6-3042CE32932B</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>1048576</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>805D9EBE-5E4B-5206-BED2-31371F63E2D0</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>CC76FA59-B606-5F42-87B6-EC7400B65881</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>BE8BBE35-B9D4-5D82-8B0F-4A6BFF2B8EB7</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>1048576</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>C74B2AD6-B2FE-56D8-9B2A-7927366989F3</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>805D9EBE-5E4B-5206-BED2-31371F63E2D0</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>D240341F-B205-5E8A-81F4-8C551472C1A7</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>E68F5709-E123-51A3-9FB3-3ECE8A2D6265</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>E3B9C660-5D50-517B-80EC-9FD1F7BEFC51</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>E68F5709-E123-51A3-9FB3-3ECE8A2D6265</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>CC76FA59-B606-5F42-87B6-EC7400B65881</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>CC76FA59-B606-5F42-87B6-EC7400B65881</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
 	<key>createdby</key>
 	<string>x-o-r-r-o</string>
 	<key>description</key>
-	<string>Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes.</string>
+	<string>Switch audio devices, mute the mic, change resolution and brightness, restore display arrangements and AirPods modes</string>
+	<key>disabled</key>
+	<false/>
 	<key>name</key>
 	<string>Display &amp; Audio Control</string>
 	<key>objects</key>
-	<array/>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>{var:keyword_audio}</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>…</string>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js audio "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>skipuniversalaction</key>
+				<true/>
+				<key>subtext</key>
+				<string>Switch output or input, set the volume</string>
+				<key>title</key>
+				<string>Audio Devices</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>BE8BBE35-B9D4-5D82-8B0F-4A6BFF2B8EB7</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>{var:keyword_mic}</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>…</string>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js mic "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>skipuniversalaction</key>
+				<true/>
+				<key>subtext</key>
+				<string>Mute, unmute or switch input</string>
+				<key>title</key>
+				<string>Microphone</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>5D498407-47F8-53D9-8AC6-3042CE32932B</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>{var:keyword_res}</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>…</string>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js res "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>skipuniversalaction</key>
+				<true/>
+				<key>subtext</key>
+				<string>Switch display modes</string>
+				<key>title</key>
+				<string>Display Resolution</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>E3B9C660-5D50-517B-80EC-9FD1F7BEFC51</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>{var:keyword_bright}</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>1</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>…</string>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js bright "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>skipuniversalaction</key>
+				<true/>
+				<key>subtext</key>
+				<string>Set display brightness</string>
+				<key>title</key>
+				<string>Brightness</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>5794098C-B646-5F90-86E4-1C5DC798380C</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>{var:keyword_layout}</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>…</string>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js layout "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>skipuniversalaction</key>
+				<true/>
+				<key>subtext</key>
+				<string>Save and restore display arrangements</string>
+				<key>title</key>
+				<string>Display Arrangements</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>025E4B35-F531-50D0-8772-75D428B9A9C2</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>alfredfiltersresultsmatchmode</key>
+				<integer>0</integer>
+				<key>argumenttreatemptyqueryasnil</key>
+				<false/>
+				<key>argumenttrimmode</key>
+				<integer>0</integer>
+				<key>argumenttype</key>
+				<integer>1</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>{var:keyword_anc}</string>
+				<key>queuedelaycustom</key>
+				<integer>3</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<true/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
+				<key>runningsubtext</key>
+				<string>…</string>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js anc "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>skipuniversalaction</key>
+				<true/>
+				<key>subtext</key>
+				<string>Noise Cancellation, Transparency, Adaptive or Off</string>
+				<key>title</key>
+				<string>AirPods Listening Mode</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>3D578AA6-A244-5FF9-845B-4877F08701A9</string>
+			<key>version</key>
+			<integer>3</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>action</key>
+				<integer>0</integer>
+				<key>argument</key>
+				<integer>0</integer>
+				<key>focusedappvariable</key>
+				<false/>
+				<key>focusedappvariablename</key>
+				<string></string>
+				<key>hotkey</key>
+				<integer>0</integer>
+				<key>hotmod</key>
+				<integer>0</integer>
+				<key>leftcursor</key>
+				<false/>
+				<key>modsmode</key>
+				<integer>0</integer>
+				<key>relatedAppsMode</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.hotkey</string>
+			<key>uid</key>
+			<string>C74B2AD6-B2FE-56D8-9B2A-7927366989F3</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>action</key>
+				<integer>0</integer>
+				<key>argument</key>
+				<integer>0</integer>
+				<key>focusedappvariable</key>
+				<false/>
+				<key>focusedappvariablename</key>
+				<string></string>
+				<key>hotkey</key>
+				<integer>0</integer>
+				<key>hotmod</key>
+				<integer>0</integer>
+				<key>leftcursor</key>
+				<false/>
+				<key>modsmode</key>
+				<integer>0</integer>
+				<key>relatedAppsMode</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.hotkey</string>
+			<key>uid</key>
+			<string>D240341F-B205-5E8A-81F4-8C551472C1A7</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js act "$1"</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js act '{"op":"mic-toggle"}'</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>805D9EBE-5E4B-5206-BED2-31371F63E2D0</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>osascript -l JavaScript ./displayaudio.js act '{"op":"anc-toggle"}'</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>E68F5709-E123-51A3-9FB3-3ECE8A2D6265</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>lastpathcomponent</key>
+				<false/>
+				<key>onlyshowifquerypopulated</key>
+				<true/>
+				<key>removeextension</key>
+				<false/>
+				<key>text</key>
+				<string>{query}</string>
+				<key>title</key>
+				<string>{var:alfred_workflow_name}</string>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.notification</string>
+			<key>uid</key>
+			<string>CC76FA59-B606-5F42-87B6-EC7400B65881</string>
+			<key>version</key>
+			<integer>1</integer>
+		</dict>
+	</array>
 	<key>readme</key>
-	<string># Display &amp; Audio Control
+	<string>## Usage
 
-Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes.
+Switch the sound output via the `audio` keyword. The current device is marked with ✓, and devices with the same name are numbered. Type a number to set the volume, like `audio 50`, or `mute` / `unmute`.
 
-&gt; **Status:** planned — not yet functional. See [PLAN.md](PLAN.md).
+* &lt;kbd&gt;↩&lt;/kbd&gt; Set as the output.
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Set as the output and for alerts and sound effects.
 
-## Usage
+Type `in` after the keyword to list input devices instead, like `audio in` or `audio in 70` to set the input level.
 
-Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes via the `res` keyword.
+### Microphone
 
-![Display &amp; Audio Control results in Alfred](images/res.png)
+Mute or unmute the microphone via the `mic` keyword. Muting remembers the input level, and unmuting restores it. Below the toggle are the input devices, to switch microphones.
 
-* &lt;kbd&gt;↩&lt;/kbd&gt; Primary action.
-* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Secondary action.
-* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;Y&lt;/kbd&gt; Quick Look.
+Configure the Hotkey to mute and unmute from anywhere, with a notification.
+
+### Resolution
+
+Switch the display mode via the `res` keyword. Modes are grouped per display, with the current one marked ✓ and HiDPI (Retina) modes labelled. Type a width, `hidpi`, a refresh rate like `60hz`, or part of a display’s name to filter.
+
+### Brightness
+
+Set the brightness via the `bright` keyword: pick 0, 25, 50, 75 or 100%, type a number like `bright 60`, or adjust with `+10` / `-10`. With several displays, set them all at once or one by one.
+
+Built-in and Apple displays work out of the box. Other external displays need [BetterDisplay](https://github.com/waydabber/BetterDisplay) (running) or [m1ddc](https://github.com/waydabber/m1ddc) (Apple silicon).
+
+### Arrangements
+
+Save the current display arrangement via the `layout` keyword followed by `save` and a name, like `layout save Desk`. It remembers where each display sits, its resolution and mirroring. Type the keyword alone to see saved arrangements, with ✓ on the one in use.
+
+* &lt;kbd&gt;↩&lt;/kbd&gt; Restore the arrangement.
+* &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Delete it.
+
+When [displayplacer](https://github.com/jakehilborn/displayplacer) is installed, arrangements are also saved and restored with it, which adds rotation and colour depth.
+
+### AirPods
+
+Change the listening mode of your AirPods or Beats via the `anc` keyword: Noise Cancellation, Transparency, Adaptive or Off. The headphones must be the current output.
+
+Configure the Hotkey to switch between two modes set in the Workflow’s Configuration.
 
 Every keyword can be changed in the Workflow’s Configuration.
-
-## Development
-
-```bash
-./build.sh   # -&gt; dist/alfred-display-audio-&lt;version&gt;.alfredworkflow
-```
-
-## AI disclosure
-
-This workflow is developed with the help of Claude (Anthropic), an AI assistant. All code is reviewed and tested by the author.
 </string>
 	<key>uidata</key>
-	<dict/>
+	<dict>
+		<key>025E4B35-F531-50D0-8772-75D428B9A9C2</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>540</integer>
+		</dict>
+		<key>3D578AA6-A244-5FF9-845B-4877F08701A9</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>670</integer>
+		</dict>
+		<key>5794098C-B646-5F90-86E4-1C5DC798380C</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>410</integer>
+		</dict>
+		<key>5D498407-47F8-53D9-8AC6-3042CE32932B</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>150</integer>
+		</dict>
+		<key>805D9EBE-5E4B-5206-BED2-31371F63E2D0</key>
+		<dict>
+			<key>xpos</key>
+			<integer>250</integer>
+			<key>ypos</key>
+			<integer>150</integer>
+		</dict>
+		<key>BE8BBE35-B9D4-5D82-8B0F-4A6BFF2B8EB7</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>20</integer>
+		</dict>
+		<key>C74B2AD6-B2FE-56D8-9B2A-7927366989F3</key>
+		<dict>
+			<key>note</key>
+			<string>Toggle microphone mute</string>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>800</integer>
+		</dict>
+		<key>CC76FA59-B606-5F42-87B6-EC7400B65881</key>
+		<dict>
+			<key>xpos</key>
+			<integer>470</integer>
+			<key>ypos</key>
+			<integer>20</integer>
+		</dict>
+		<key>D240341F-B205-5E8A-81F4-8C551472C1A7</key>
+		<dict>
+			<key>note</key>
+			<string>Switch AirPods listening mode</string>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>930</integer>
+		</dict>
+		<key>E3B9C660-5D50-517B-80EC-9FD1F7BEFC51</key>
+		<dict>
+			<key>xpos</key>
+			<integer>30</integer>
+			<key>ypos</key>
+			<integer>280</integer>
+		</dict>
+		<key>E68F5709-E123-51A3-9FB3-3ECE8A2D6265</key>
+		<dict>
+			<key>xpos</key>
+			<integer>250</integer>
+			<key>ypos</key>
+			<integer>280</integer>
+		</dict>
+		<key>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</key>
+		<dict>
+			<key>note</key>
+			<string>Runs the selected action</string>
+			<key>xpos</key>
+			<integer>250</integer>
+			<key>ypos</key>
+			<integer>20</integer>
+		</dict>
+	</dict>
 	<key>userconfigurationconfig</key>
 	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>audio</string>
+				<key>placeholder</key>
+				<string>audio</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Audio devices and volume</string>
+			<key>label</key>
+			<string>Keywords</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_audio</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>mic</string>
+				<key>placeholder</key>
+				<string>mic</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Microphone mute and input devices</string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_mic</string>
+		</dict>
 		<dict>
 			<key>config</key>
 			<dict>
@@ -62,9 +840,9 @@ This workflow is developed with the help of Claude (Anthropic), an AI assistant.
 				<true/>
 			</dict>
 			<key>description</key>
-			<string></string>
+			<string>Display resolution</string>
 			<key>label</key>
-			<string>Res keyword</string>
+			<string></string>
 			<key>type</key>
 			<string>textfield</string>
 			<key>variable</key>
@@ -83,7 +861,7 @@ This workflow is developed with the help of Claude (Anthropic), an AI assistant.
 				<true/>
 			</dict>
 			<key>description</key>
-			<string></string>
+			<string>Brightness</string>
 			<key>label</key>
 			<string></string>
 			<key>type</key>
@@ -104,7 +882,7 @@ This workflow is developed with the help of Claude (Anthropic), an AI assistant.
 				<true/>
 			</dict>
 			<key>description</key>
-			<string></string>
+			<string>Display arrangements</string>
 			<key>label</key>
 			<string></string>
 			<key>type</key>
@@ -116,48 +894,6 @@ This workflow is developed with the help of Claude (Anthropic), an AI assistant.
 			<key>config</key>
 			<dict>
 				<key>default</key>
-				<string>audio</string>
-				<key>placeholder</key>
-				<string>audio</string>
-				<key>required</key>
-				<true/>
-				<key>trim</key>
-				<true/>
-			</dict>
-			<key>description</key>
-			<string></string>
-			<key>label</key>
-			<string></string>
-			<key>type</key>
-			<string>textfield</string>
-			<key>variable</key>
-			<string>keyword_audio</string>
-		</dict>
-		<dict>
-			<key>config</key>
-			<dict>
-				<key>default</key>
-				<string>mic</string>
-				<key>placeholder</key>
-				<string>mic</string>
-				<key>required</key>
-				<true/>
-				<key>trim</key>
-				<true/>
-			</dict>
-			<key>description</key>
-			<string></string>
-			<key>label</key>
-			<string></string>
-			<key>type</key>
-			<string>textfield</string>
-			<key>variable</key>
-			<string>keyword_mic</string>
-		</dict>
-		<dict>
-			<key>config</key>
-			<dict>
-				<key>default</key>
 				<string>anc</string>
 				<key>placeholder</key>
 				<string>anc</string>
@@ -167,7 +903,7 @@ This workflow is developed with the help of Claude (Anthropic), an AI assistant.
 				<true/>
 			</dict>
 			<key>description</key>
-			<string></string>
+			<string>AirPods listening mode</string>
 			<key>label</key>
 			<string></string>
 			<key>type</key>
@@ -175,9 +911,177 @@ This workflow is developed with the help of Claude (Anthropic), an AI assistant.
 			<key>variable</key>
 			<string>keyword_anc</string>
 		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>highest</string>
+				<key>pairs</key>
+				<array>
+					<array>
+						<string>Highest refresh rate per resolution</string>
+						<string>highest</string>
+					</array>
+					<array>
+						<string>Every refresh rate</string>
+						<string>all</string>
+					</array>
+				</array>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string>Resolutions</string>
+			<key>type</key>
+			<string>popupbutton</string>
+			<key>variable</key>
+			<string>res_refresh</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<false/>
+				<key>required</key>
+				<false/>
+				<key>text</key>
+				<string>Show low-resolution modes on Retina displays</string>
+			</dict>
+			<key>description</key>
+			<string>Non-HiDPI modes make text tiny on Retina displays.</string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>checkbox</string>
+			<key>variable</key>
+			<string>res_lowres</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>75</string>
+				<key>placeholder</key>
+				<string>75</string>
+				<key>required</key>
+				<false/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string>Microphone level (%) when unmuting if no earlier level is remembered</string>
+			<key>label</key>
+			<string>Unmute level</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>mic_level</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>Noise Cancellation</string>
+				<key>pairs</key>
+				<array>
+					<array>
+						<string>Noise Cancellation</string>
+						<string>Noise Cancellation</string>
+					</array>
+					<array>
+						<string>Transparency</string>
+						<string>Transparency</string>
+					</array>
+					<array>
+						<string>Adaptive</string>
+						<string>Adaptive</string>
+					</array>
+					<array>
+						<string>Off</string>
+						<string>Off</string>
+					</array>
+				</array>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string>AirPods Hotkey</string>
+			<key>type</key>
+			<string>popupbutton</string>
+			<key>variable</key>
+			<string>anc_toggle_a</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>Transparency</string>
+				<key>pairs</key>
+				<array>
+					<array>
+						<string>Transparency</string>
+						<string>Transparency</string>
+					</array>
+					<array>
+						<string>Noise Cancellation</string>
+						<string>Noise Cancellation</string>
+					</array>
+					<array>
+						<string>Adaptive</string>
+						<string>Adaptive</string>
+					</array>
+					<array>
+						<string>Off</string>
+						<string>Off</string>
+					</array>
+				</array>
+			</dict>
+			<key>description</key>
+			<string>The Hotkey switches between these two listening modes.</string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>popupbutton</string>
+			<key>variable</key>
+			<string>anc_toggle_b</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>auto</string>
+				<key>pairs</key>
+				<array>
+					<array>
+						<string>Automatic</string>
+						<string>auto</string>
+					</array>
+					<array>
+						<string>Off, Transparency, Noise Cancellation</string>
+						<string>off</string>
+					</array>
+					<array>
+						<string>Transparency, Adaptive, Noise Cancellation</string>
+						<string>adaptive</string>
+					</array>
+				</array>
+			</dict>
+			<key>description</key>
+			<string>Used only when the Sound menu shows three modes in a language other than English.</string>
+			<key>label</key>
+			<string>AirPods modes</string>
+			<key>type</key>
+			<string>popupbutton</string>
+			<key>variable</key>
+			<string>anc_three</string>
+		</dict>
 	</array>
+	<key>variables</key>
+	<dict/>
+	<key>variablesdontexport</key>
+	<array/>
 	<key>version</key>
-	<string>0.1.0</string>
+	<string>1.0.0</string>
 	<key>webaddress</key>
 	<string>https://github.com/x-o-r-r-o/alfred-display-audio</string>
 </dict>
