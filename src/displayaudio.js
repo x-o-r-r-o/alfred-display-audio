@@ -792,7 +792,7 @@ function resItems(query) {
       const tags = [];
       if (m.flags & kDisplayModeNativeFlag) tags.push("Native");
       if (m.flags & kDisplayModeDefaultFlag) tags.push("Default");
-      const hay = [`${m.w}x${m.h}`, `${m.w} ${m.h}`, m.pw > m.w ? "hidpi retina" : "low resolution", fmtHz(m.hz).replace(" ", ""), d.label, tags.join(" "), isCur ? "current" : ""];
+      const hay = [`${m.w}x${m.h}`, `${m.w} ${m.h}`, m.pw > m.w ? "hidpi retina" : "1x", fmtHz(m.hz).replace(" ", ""), d.label, tags.join(" "), isCur ? "current" : ""];
       if (query && !matches(query, ...hay)) continue;
       items.push({
         title: `${isCur ? "✓ " : ""}${modeTitle(m)}`,
@@ -870,7 +870,8 @@ function brightnessTargets(list) {
     if (bd && bd !== "not-running") {
       const r = spawn(bd, ["get", `-displayID=${d.id}`, "-feature=brightness"], 3);
       const v = parseFloat(r.out);
-      return { d, via: "betterdisplay", bin: bd, value: r.status === 0 && isFinite(v) ? (v <= 1 ? v * 100 : v) : null };
+      // a display BetterDisplay doesn't manage falls through to m1ddc
+      if (r.status === 0 && isFinite(v)) return { d, via: "betterdisplay", bin: bd, value: v <= 1 ? v * 100 : v };
     }
     if (m1 === undefined) {
       m1 = which("m1ddc");
@@ -893,6 +894,7 @@ function brightnessTargets(list) {
       }
       return { d, via: null, reason };
     }
+    if (bd && bd !== "not-running") return { d, via: null, reason: "BetterDisplay can't control this display" };
     return { d, via: null, reason: bd === "not-running" ? "open-betterdisplay" : "install" };
   });
 }
@@ -1214,7 +1216,7 @@ function ancStatePath() {
 function ancItems(query) {
   const out = ancOutput();
   const state = readJSON(ancStatePath(), {});
-  const wireless = out && (out.transport === "blue" || out.transport === "blea");
+  const wireless = isWireless(out);
   const items = [];
   if (!wireless)
     items.push(info("AirPods aren't the current output", out ? `Output is ${out.name} · connect your AirPods first` : "No output device", "info"));
@@ -1242,11 +1244,17 @@ const ANC_ERRORS = {
   "click-failed": "Control Center didn't accept the change. Try again",
 };
 
+function isWireless(d) {
+  return !!d && (d.transport === "blue" || d.transport === "blea");
+}
+
 function ancAction(a) {
   const out = ancOutput();
   const device = out ? out.name : "";
   const modes = a.toggle ? [a.mode, a.other] : [a.mode];
   if (modes.some((m) => !ANC_MODES.find((x) => x.key === m))) return "Unknown listening mode";
+  // don't open Control Center for nothing
+  if (!isWireless(out)) return `Connect your AirPods first: the output is ${device || "not set"}`;
   const argv = [...modes.slice(0, 1), modes[1] || "", device, env("anc_three", "auto")];
   const script = `${$.NSFileManager.defaultManager.currentDirectoryPath.js}/anc.applescript`;
   let res;

@@ -773,6 +773,39 @@ class AuditPass2Tests(unittest.TestCase):
         self.assertIn("share a UUID", find(it, "DELL U2720Q (1): brightness not available")["subtitle"])
 
 
+class AuditPass3Tests(unittest.TestCase):
+    """Regressions for bugs found in the third audit."""
+
+    def test_betterdisplay_falls_back_to_m1ddc(self):
+        d = tempfile.mkdtemp(dir=TMP, prefix="bin-")
+        for name, script in [("betterdisplaycli", "echo 'display not found' >&2; exit 1\n"), ("m1ddc", M1DDC)]:
+            p = os.path.join(d, name)
+            with open(p, "w") as f:
+                f.write("#!/bin/bash\n" + script)
+            os.chmod(p, 0o755)
+        fx = fixture(displays=[mac(), dell()])
+        row = find(sf("bright", "40", fx, bins=d), "DELL U2720Q")
+        self.assertIn("via m1ddc", row["subtitle"])
+        self.assertIn("m1ddc display 1 set luminance 40", act(row["arg"], fx, bins=d))
+
+    def test_betterdisplay_without_the_display(self):
+        bins = fake_bin("betterdisplaycli", "exit 1\n")
+        it = sf("bright", "", fixture(displays=[mac(), dell()]), bins=bins)
+        self.assertIn("BetterDisplay can't control", find(it, "DELL U2720Q: brightness not available")["subtitle"])
+
+    def test_anc_hotkey_without_airpods_does_not_open_control_center(self):
+        out = act({"op": "anc-toggle"})
+        self.assertNotIn("DRY RUN", out)
+        self.assertEqual(out, "Connect your AirPods first: the output is MacBook Pro Speakers")
+        out = act({"op": "anc", "mode": "Transparency"}, fixture(audio=audio(output=0)))
+        self.assertEqual(out, "Connect your AirPods first: the output is not set")
+
+    def test_external_1x_modes_are_not_called_low_resolution(self):
+        fx = fixture(displays=[mac(), dell()])
+        self.assertEqual(sf("res", "low resolution", fx)[0]["title"], "No display mode matches “low resolution”")
+        self.assertIn("3840 × 2160 · 30 Hz", titles(sf("res", "1x", fx)))
+
+
 class RealHardwareTests(unittest.TestCase):
     """Read-only: list the real devices and displays; never runs an action."""
 
