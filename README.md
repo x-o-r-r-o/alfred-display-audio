@@ -1,15 +1,27 @@
-# Display & Audio Control — Alfred Workflow
+# Display & Audio Control
 
 Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes.
 
-**Status:** planned (v0.1.0 scaffold) · **Keyword:** `disp / audio` · **Requires:** Alfred 5 + Powerpack
+> **Status:** planned — not yet functional. See [PLAN.md](PLAN.md).
 
-## Install
-Download the latest `.alfredworkflow` from Releases and double-click it.
+## Usage
 
-## Build from source
+Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes via the `res` keyword.
+
+![Display & Audio Control results in Alfred](images/res.png)
+
+* <kbd>↩</kbd> Primary action.
+* <kbd>⌘</kbd><kbd>↩</kbd> Secondary action.
+* <kbd>⌘</kbd><kbd>Y</kbd> Quick Look.
+
+Every keyword can be changed in the Workflow’s Configuration.
+
+## Development
+
 ```bash
-./build.sh
+./build.sh   # -> dist/alfred-display-audio-<version>.alfredworkflow
 ```
 
-See [PLAN.md](PLAN.md) for scope and roadmap.
+## AI disclosure
+
+This workflow is developed with the help of Claude (Anthropic), an AI assistant. All code is reviewed and tested by the author.

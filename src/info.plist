@@ -3,24 +3,182 @@
 <plist version="1.0">
 <dict>
 	<key>bundleid</key>
-	<string>com.xorro.display-audio</string>
-	<key>name</key>
-	<string>Display & Audio Control</string>
-	<key>description</key>
-	<string>Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes.</string>
-	<key>createdby</key>
-	<string>xorro</string>
-	<key>version</key>
-	<string>0.1.0</string>
-	<key>readme</key>
-	<string>See README.md</string>
-	<key>objects</key>
-	<array/>
+	<string>io.github.x-o-r-r-o.display-audio</string>
+	<key>category</key>
+	<string>Productivity</string>
 	<key>connections</key>
 	<dict/>
+	<key>createdby</key>
+	<string>x-o-r-r-o</string>
+	<key>description</key>
+	<string>Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes.</string>
+	<key>name</key>
+	<string>Display &amp; Audio Control</string>
+	<key>objects</key>
+	<array/>
+	<key>readme</key>
+	<string># Display &amp; Audio Control
+
+Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes.
+
+&gt; **Status:** planned — not yet functional. See [PLAN.md](PLAN.md).
+
+## Usage
+
+Resolution, brightness, arrangement, audio devices, mic mute and AirPods modes via the `res` keyword.
+
+![Display &amp; Audio Control results in Alfred](images/res.png)
+
+* &lt;kbd&gt;↩&lt;/kbd&gt; Primary action.
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Secondary action.
+* &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;Y&lt;/kbd&gt; Quick Look.
+
+Every keyword can be changed in the Workflow’s Configuration.
+
+## Development
+
+```bash
+./build.sh   # -&gt; dist/alfred-display-audio-&lt;version&gt;.alfredworkflow
+```
+
+## AI disclosure
+
+This workflow is developed with the help of Claude (Anthropic), an AI assistant. All code is reviewed and tested by the author.
+</string>
 	<key>uidata</key>
 	<dict/>
 	<key>userconfigurationconfig</key>
-	<array/>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>res</string>
+				<key>placeholder</key>
+				<string>res</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string>Res keyword</string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_res</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>bright</string>
+				<key>placeholder</key>
+				<string>bright</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_bright</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>layout</string>
+				<key>placeholder</key>
+				<string>layout</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_layout</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>audio</string>
+				<key>placeholder</key>
+				<string>audio</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_audio</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>mic</string>
+				<key>placeholder</key>
+				<string>mic</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_mic</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>default</key>
+				<string>anc</string>
+				<key>placeholder</key>
+				<string>anc</string>
+				<key>required</key>
+				<true/>
+				<key>trim</key>
+				<true/>
+			</dict>
+			<key>description</key>
+			<string></string>
+			<key>label</key>
+			<string></string>
+			<key>type</key>
+			<string>textfield</string>
+			<key>variable</key>
+			<string>keyword_anc</string>
+		</dict>
+	</array>
+	<key>version</key>
+	<string>0.1.0</string>
+	<key>webaddress</key>
+	<string>https://github.com/x-o-r-r-o/alfred-display-audio</string>
 </dict>
 </plist>
