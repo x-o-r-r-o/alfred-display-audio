@@ -116,6 +116,12 @@ function readJSON(path, fallback) {
   }
 }
 
+// A state file as a plain object: a corrupt, null or array file counts as empty.
+function readObject(path) {
+  const v = readJSON(path, null);
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
+
 function writeJSON(path, value) {
   // atomically, so a crash never leaves half a file
   $(JSON.stringify(value, null, 2)).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, $());
@@ -683,16 +689,25 @@ function micItems(query) {
   const dev = currentInputDevice();
   const hwMute = dev ? HW.inputMute(dev.id) : null;
   const items = [];
-  const toggleRow = (muted, detail) => ({
-    title: muted ? "Unmute microphone" : "Mute microphone",
-    subtitle: `${name} · ${muted ? "Muted" : detail}`,
-    arg: action("mic-toggle"),
-    icon: icon(muted ? "mic_off" : "mic"),
-  });
+  // The row does what its title says (mic-mute / mic-unmute), even if the state changes before ↩.
+  // Typing "mute" or "unmute" asks for that one, and says so when it's already the case.
+  const word = /^(mute|unmute)$/i.exec(q);
+  const toggleRow = (muted, detail) => {
+    const mute = word ? word[1].toLowerCase() === "mute" : !muted;
+    const now = `${name} · ${muted ? "Muted" : detail}`;
+    if (mute === muted) return info(muted ? "Microphone is already muted" : "Microphone is already on", now, muted ? "mic_off" : "mic");
+    return {
+      title: mute ? "Mute microphone" : "Unmute microphone",
+      subtitle: now,
+      arg: action(mute ? "mic-mute" : "mic-unmute"),
+      icon: icon(muted ? "mic_off" : "mic"),
+    };
+  };
   if (!name) items.push(info("No input device", "Connect a microphone or check System Settings › Sound › Input", "error"));
   else if (vol.input === null) {
     // no software level (some USB microphones): use the device's own mute switch if it has one
     if (hwMute === null) items.push(info(`${name} has no adjustable input level`, "It can't be muted from here", "error"));
+    else if (parseLevel(q) !== null) return [info(`${name} has no adjustable input level`, "Type “mute” or “unmute” instead", "error")];
     else if (!q || matches(q, "mute unmute toggle microphone")) items.push(toggleRow(hwMute, "On"));
   } else {
     const level = parseLevel(q);
@@ -721,7 +736,7 @@ function micItems(query) {
 
 function micState() {
   const path = `${dataDir()}/mic.json`;
-  return { path, state: readJSON(path, {}) };
+  return { path, state: readObject(path) };
 }
 
 function defaultUnmuteLevel() {
@@ -745,11 +760,15 @@ function micToggle(forceMute) {
   if (vol.input === null) {
     if (hwMute === null) return `${name} has no adjustable input level`;
     const mute = forceMute === undefined ? !hwMute : forceMute;
+    if (mute === hwMute) return mute ? `🔇 Microphone is already muted · ${name}` : `🎙 Microphone is already on · ${name}`;
     setInputMute(dev, mute);
     return mute ? `🔇 Microphone muted · ${name}` : `🎙 Microphone on · ${name}`;
   }
   const { path, state } = micState();
-  const mute = forceMute === undefined ? !(vol.input === 0 || hwMute === true) : forceMute;
+  const muted = vol.input === 0 || hwMute === true;
+  const mute = forceMute === undefined ? !muted : forceMute;
+  // an explicit unmute of a live microphone must not reset its level to the remembered one
+  if (mute === muted) return mute ? `🔇 Microphone is already muted · ${name}` : `🎙 Microphone is already on · ${pct(vol.input)} · ${name}`;
   if (mute) {
     if (vol.input > 0) writeJSON(path, Object.assign(state, { level: vol.input }));
     setVolume({ inputVolume: 0 });
@@ -1007,7 +1026,7 @@ function brightItems(query) {
   let rel = null;
   let level = null;
   const r = /^([+-])\s*(\d{1,3})\s*%?$/.exec(q);
-  if (r) rel = (r[1] === "-" ? -1 : 1) * Number(r[2]);
+  if (r) rel = r[1] === "-" ? -Number(r[2]) : Number(r[2]);
   else if (q) {
     level = parseLevel(q);
     if (level === null || level > 100) return [info("Type a brightness from 0 to 100", "Or +10 / -10 to adjust", "error")];
@@ -1020,7 +1039,7 @@ function brightItems(query) {
   const targetArg = (t) => ({ id: t.d.id, uuid: t.d.uuid, name: t.d.label, via: t.via, index: t.index || null });
   const levels = level !== null || rel !== null ? [level] : [100, 75, 50, 25, 0];
   for (const lv of levels) {
-    const what = rel !== null ? `${rel > 0 ? "+" : ""}${rel}%` : `${lv}%`;
+    const what = rel !== null ? `${r[1]}${Math.abs(rel)}%` : `${lv}%`;
     const ico = "bright";
     if (ok.length > 1)
       items.push({
@@ -1315,7 +1334,7 @@ function ancStatePath() {
 
 function ancItems(query) {
   const out = ancOutput();
-  const state = readJSON(ancStatePath(), {});
+  const state = readObject(ancStatePath());
   const wireless = isWireless(out);
   const items = [];
   if (!wireless)
@@ -1383,7 +1402,7 @@ function ancAction(a) {
   const modes = a.toggle ? [a.mode, a.other] : [a.mode];
   if (modes.some((m) => !ANC_MODES.find((x) => x.key === m))) return "Unknown listening mode";
   // don't open Control Center for nothing
-  if (!isWireless(out)) return `Connect your AirPods first: the output is ${device || "not set"}`;
+  if (!isWireless(out)) return `Connect your AirPods first: the output is ${clean(device) || "not set"}`;
   let labels = null;
   try {
     labels = ancLabels();
@@ -1401,7 +1420,7 @@ function ancAction(a) {
   const m = /^ok:([^:]*):(.*)$/.exec(text);
   if (m) {
     writeJSON(ancStatePath(), { mode: m[2], device, time: new Date().toISOString() });
-    return `🎧 ${m[2]}${device ? ` · ${device}` : ""}`;
+    return `🎧 ${m[2]}${device ? ` · ${clean(device)}` : ""}`;
   }
   const e = /^error:(.*)$/.exec(text);
   if (e) return ANC_ERRORS[e[1]] || `Could not change the listening mode (${e[1]})`;

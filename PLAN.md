@@ -49,7 +49,7 @@ Raycast demand this workflow replaces (downloads, 2026-09-26):
 ## Release checklist (Alfred forum + Gallery)
 Sources: alfred.app/submit, alfred.app/submit/styleguide, alfred.app/submit/screenshots, alfredforum.com topics 23976 and 23388.
 
-- [x] README starts with `## Usage`; each paragraph ends "via the `kw` keyword" / "via the Universal Action"
+- [x] README starts with `## Usage` (after a genuine `## Setup`: Accessibility permission for `anc`); each paragraph ends "via the `kw` keyword" / "via the Universal Action"
 - [ ] A clean screenshot (window only, transparent background, real-looking data, no other workflows) after each paragraph, stored in `images/`
 - [x] Modifiers listed as `* <kbd>⌘</kbd><kbd>↩</kbd> Action.`; Quick Look written as <kbd>⌘</kbd><kbd>Y</kbd>
 - [x] `## Setup` only for genuine manual steps (no app installs or API keys; the Gallery lists those)

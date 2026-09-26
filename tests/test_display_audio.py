@@ -965,6 +965,55 @@ esac
         self.assertTrue(find(sf("layout", "", fixture(displays=[mac(), dell(rotation=90)]), data=d), "✓ Portrait"))
 
 
+class FinalReviewTests(unittest.TestCase):
+    def test_null_or_array_state_files(self):
+        for bad in ("null", "[1, 2]", "42", "{broken"):
+            d = data_dir("final-state-" + str(abs(hash(bad))))
+            for f in ("mic.json", "anc.json"):
+                with open(os.path.join(d, f), "w") as fh:
+                    fh.write(bad)
+            out = act({"op": "mic-mute"}, data=d)
+            self.assertIn("Microphone muted", out)
+            self.assertEqual(load(os.path.join(d, "mic.json"))["level"], 60)  # remembered, not lost
+            self.assertEqual(titles(sf("anc", "", data=d))[1:], ["Off", "Transparency", "Adaptive", "Noise Cancellation"])
+
+    def test_mic_row_does_what_its_title_says(self):
+        self.assertEqual(json.loads(sf("mic")[0]["arg"]), {"op": "mic-mute"})
+        muted = fixture(audio=audio(vol={"input": 0}))
+        self.assertEqual(json.loads(sf("mic", "", muted)[0]["arg"]), {"op": "mic-unmute"})
+        # the state changed after the row was shown: ↩ still does what the row said
+        self.assertIn("already muted", act({"op": "mic-mute"}, muted))
+        out = act({"op": "mic-unmute"})
+        self.assertIn("already on", out)
+        self.assertNotIn("DRY RUN", out)  # a live microphone's level is left alone
+
+    def test_mic_typed_mute_words(self):
+        it = sf("mic", "unmute")
+        self.assertEqual(it[0]["title"], "Microphone is already on")
+        self.assertIs(it[0]["valid"], False)
+        it = sf("mic", "mute", fixture(audio=audio(vol={"input": 0})))
+        self.assertEqual(it[0]["title"], "Microphone is already muted")
+        self.assertEqual(json.loads(sf("mic", "mute")[0]["arg"]), {"op": "mic-mute"})
+
+    def test_mic_level_without_software_level(self):
+        yeti = dict(dev(70, "Yeti", "yeti", "usb", inp=2), muteIn=False)
+        fx = fixture(audio=audio(DEVICES + [yeti], input=70, vol={"input": None}))
+        it = sf("mic", "50", fx)
+        self.assertEqual(titles(it), ["Yeti has no adjustable input level"])
+        self.assertIn("mute", it[0]["subtitle"])
+
+    def test_relative_brightness_titles_keep_the_sign(self):
+        self.assertEqual(sf("bright", "+0")[0]["title"], "Built-in Retina Display +0%")
+        self.assertEqual(sf("bright", "-10")[0]["title"], "Built-in Retina Display -10%")
+        self.assertEqual(sf("bright", "+10")[0]["title"], "Built-in Retina Display +10%")
+
+    def test_anc_notification_name_is_cleaned(self):
+        pods = dev(98, "Pods‮evil\nx", "pods", "blue", out=1)
+        fx = fixture(audio=audio(DEVICES + [pods], output=98))
+        out = act({"op": "anc", "mode": "Transparency"}, fx, data=data_dir("final-anc"))
+        self.assertTrue(out.endswith("Transparency · Pods evil x"), out)
+
+
 class RealHardwareTests(unittest.TestCase):
     """Read-only: list the real devices and displays; never runs an action."""
 

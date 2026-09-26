@@ -17,9 +17,11 @@ Switch the sound output via the `audio` keyword. The current device is marked wi
 
 Type `in` after the keyword to list input devices instead, like `audio in` or `audio in 70` to set the input level.
 
+![Choosing an input device](images/audio-in.png)
+
 ### Microphone
 
-Mute or unmute the microphone via the `mic` keyword. Muting remembers the input level, and unmuting restores it; microphones without an adjustable level are muted with their own mute switch. Below the toggle are the input devices, to switch microphones.
+Mute or unmute the microphone via the `mic` keyword. Muting remembers the input level, and unmuting restores it; microphones without an adjustable level are muted with their own mute switch. Type a number to set the input level, like `mic 70`. Below the toggle are the input devices, to switch microphones.
 
 ![Muting the microphone](images/mic.png)
 
