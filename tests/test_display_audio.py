@@ -97,7 +97,8 @@ def data_dir(name):
 
 
 def call(args, fx=None, data=None, bins=EMPTY_BIN, **env):
-    e = dict(os.environ, alfred_workflow_data=data or data_dir("default"), DA_BIN_DIRS=bins, **env)
+    e = dict(os.environ, alfred_workflow_data=data or data_dir("default"), DA_BIN_DIRS=bins, DA_BD_RUNNING="1")
+    e.update(env)
     e.pop("DA_DRY_RUN", None)
     if fx:
         e["DA_FIXTURE"] = fx
@@ -1012,6 +1013,57 @@ class FinalReviewTests(unittest.TestCase):
         fx = fixture(audio=audio(DEVICES + [pods], output=98))
         out = act({"op": "anc", "mode": "Transparency"}, fx, data=data_dir("final-anc"))
         self.assertTrue(out.endswith("Transparency · Pods evil x"), out)
+
+
+class Round4Tests(unittest.TestCase):
+    """Alfred's real runtime: a minimal environment, data paths with spaces, a fresh install."""
+
+    def alfred_env(self, root, **extra):
+        bid = "io.github.x-o-r-r-o.display-audio"
+        e = {"HOME": os.environ.get("HOME", ""), "USER": os.environ.get("USER", ""),
+             "TMPDIR": os.environ.get("TMPDIR", "/tmp/"), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
+             "alfred_workflow_data": os.path.join(root, "Application Support", "Alfred", "Workflow Data", bid),
+             "alfred_workflow_cache": os.path.join(root, "Caches", "com.runningwithcrayons.Alfred", "Workflow Data", bid),
+             "alfred_preferences": os.path.join(root, "Alfred.alfredpreferences"), "alfred_version": "5.6",
+             "alfred_version_build": "2300", "alfred_theme_subtext": "3", "alfred_workflow_bundleid": bid,
+             "alfred_workflow_name": "Display & Audio Control", "alfred_workflow_uid": "user.workflow.1234 ABCD",
+             "alfred_workflow_version": "1.0.0", "alfred_debug": "1", "res_lowres": "0", "res_refresh": "highest",
+             "mic_level": " 80 ", "anc_three": "auto", "DA_BIN_DIRS": EMPTY_BIN}
+        e.update(extra)
+        return e
+
+    def run_like_alfred(self, e, *args):
+        # the Script Filter's own command line, through /bin/bash with the query as $1
+        out = subprocess.run(["/bin/bash", "-c", 'osascript -l JavaScript ./displayaudio.js "$1" "$2"', "--", *args],
+                             cwd=SRC, env=e, capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return out.stdout
+
+    def test_minimal_environment_fresh_install(self):
+        root = os.path.join(TMP, "alfred root with spaces")
+        e = self.alfred_env(root, DA_FIXTURE=fixture(displays=[mac(), dell()]))
+        self.assertFalse(os.path.exists(e["alfred_workflow_data"]))
+        for cmd, q in [("audio", ""), ("audio", "in 5"), ("mic", ""), ("res", "hidpi"), ("bright", "+10"),
+                       ("layout", ""), ("layout", "save Büro “A”"), ("anc", "")]:
+            validate(json.loads(self.run_like_alfred(e, cmd, q)))
+        self.assertIn("Saved “Büro 🖥”", self.run_like_alfred(e, "act", json.dumps({"op": "layout-save", "name": "Büro 🖥"})))
+        self.assertIn("Büro 🖥", load(os.path.join(e["alfred_workflow_data"], "layouts.json")))
+        self.assertIn("Microphone on · 80%", self.run_like_alfred(
+            self.alfred_env(root, DA_FIXTURE=fixture(audio=audio(vol={"input": 0}))), "act", '{"op":"mic-unmute"}'))
+
+    def test_betterdisplay_not_running(self):
+        bins = fake_bin("betterdisplaycli", 'exit 1\n')
+        it = sf("bright", "", fixture(displays=[mac(), dell()]), bins=bins, DA_BD_RUNNING="0")
+        self.assertTrue(find(it, "DELL U2720Q: open BetterDisplay"))
+
+    def test_unwritable_data_folder(self):
+        d = data_dir("round4-readonly")
+        os.chmod(d, 0o500)
+        try:
+            out = act({"op": "layout-save", "name": "Desk"}, data=d)
+        finally:
+            os.chmod(d, 0o700)
+        self.assertIn("Could not save “Desk”", out)
 
 
 class RealHardwareTests(unittest.TestCase):

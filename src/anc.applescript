@@ -139,6 +139,8 @@ end run
 -- Breadth-first search below root for an element whose AXIdentifier (key "id") or role (key "role")
 -- is wanted. Bounded by depth and a node budget: some accessibility trees contain cycles.
 property budget : 0
+-- ControlCenter windows that were open before this script opened the Sound menu
+property baseWindows : 0
 
 on findIn(root, key, wanted, depth)
 	if depth < 0 or budget is less than or equal to 0 then return missing value
@@ -204,6 +206,11 @@ end press
 
 -- Opens the Sound menu; returns the element to press again to close it, or missing value.
 on openSoundMenu()
+	set n to 0
+	try
+		tell application "System Events" to set n to count of windows of process "ControlCenter"
+	end try
+	set my baseWindows to n
 	set soundItem to my findMenuExtra("com.apple.menuextra.sound")
 	if soundItem is not missing value then
 		my press(soundItem)
@@ -242,10 +249,14 @@ on openSoundMenu()
 end openSoundMenu
 
 on waitForScrollArea()
+	-- Bounded in time as well as in nodes: on a Sound menu whose structure this script doesn't
+	-- know, repeated searches must not outlast the caller's timeout (which would leave it open).
+	set t0 to current date
 	tell application "System Events" to tell process "ControlCenter"
 		repeat 30 times
+			if ((current date) - t0) > 5 then exit repeat
 			try
-				if (count of windows) > 0 then
+				if (count of windows) > baseWindows then
 					set my budget to 400
 					set sa to my findIn(window 1, "role", "AXScrollArea", 6)
 					if sa is not missing value then
@@ -477,11 +488,13 @@ end expandDevice
 on closeMenu(opener)
 	delay 0.3
 	tell application "System Events" to tell process "ControlCenter"
+		-- only the windows this script opened: pressing the opener while another Control Center
+		-- window stays up would reopen the menu on every other press
 		repeat 5 times
-			if (count of windows) is 0 then exit repeat
+			if (count of windows) is not greater than baseWindows then exit repeat
 			my press(opener)
 			delay 0.3
 		end repeat
-		if (count of windows) > 0 then key code 53 -- Escape
+		if (count of windows) > baseWindows then key code 53 -- Escape
 	end tell
 end closeMenu

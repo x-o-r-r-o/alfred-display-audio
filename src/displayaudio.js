@@ -123,8 +123,8 @@ function readObject(path) {
 }
 
 function writeJSON(path, value) {
-  // atomically, so a crash never leaves half a file
-  $(JSON.stringify(value, null, 2)).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, $());
+  // atomically, so a crash never leaves half a file; false when it couldn't be written
+  return !!$(JSON.stringify(value, null, 2)).writeToFileAtomicallyEncodingError(path, true, $.NSUTF8StringEncoding, $());
 }
 
 // ---------- processes ----------
@@ -138,7 +138,13 @@ function binDirs() {
   const custom = env("DA_BIN_DIRS", null);
   if (custom !== null) return custom.split(":").filter(Boolean);
   const home = $.NSHomeDirectory().js;
-  return ["/opt/homebrew/bin", "/usr/local/bin", `${home}/.local/bin`, "/opt/local/bin"];
+  const user = $.NSUserName().js;
+  // Homebrew (Apple silicon, Intel), MacPorts, Nix (nix-darwin, per-user, profile), personal bins
+  return [
+    "/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin",
+    "/run/current-system/sw/bin", `/etc/profiles/per-user/${user}/bin`, `${home}/.nix-profile/bin`, "/nix/var/nix/profiles/default/bin",
+    `${home}/.local/bin`, `${home}/bin`,
+  ];
 }
 
 function which(name) {
@@ -922,19 +928,26 @@ function resAction(a) {
 // Brightness
 // ======================================================================
 
+function betterDisplayRunning() {
+  const forced = env("DA_BD_RUNNING", null); // tests
+  if (forced !== null) return forced === "1";
+  ObjC.import("AppKit");
+  return Number($.NSRunningApplication.runningApplicationsWithBundleIdentifier("pro.betterdisplay.BetterDisplay").count) > 0;
+}
+
+// Both the app binary and betterdisplaycli only talk to the running app (launching the app
+// binary here would start a second copy), so without it running there is nothing to call.
 function betterDisplayCLI() {
   const inDirs = which("betterdisplaycli");
-  if (inDirs) return inDirs;
-  if (env("DA_BIN_DIRS", null) !== null) return which("BetterDisplay");
+  if (inDirs) return betterDisplayRunning() ? inDirs : "not-running";
+  if (env("DA_BIN_DIRS", null) !== null) {
+    const fake = which("BetterDisplay");
+    return fake && !betterDisplayRunning() ? "not-running" : fake;
+  }
   const home = $.NSHomeDirectory().js;
   for (const app of ["/Applications/BetterDisplay.app", `${home}/Applications/BetterDisplay.app`]) {
     const p = `${app}/Contents/MacOS/BetterDisplay`;
-    if (isExecutable(p)) {
-      // The app binary talks to the running app; launching it here would start a second copy.
-      ObjC.import("AppKit");
-      const running = $.NSRunningApplication.runningApplicationsWithBundleIdentifier("pro.betterdisplay.BetterDisplay");
-      return Number(running.count) > 0 ? p : "not-running";
-    }
+    if (isExecutable(p)) return betterDisplayRunning() ? p : "not-running";
   }
   return null;
 }
@@ -1256,7 +1269,7 @@ function layoutSave(a) {
   }
   const layouts = loadLayouts();
   layouts[name] = entry;
-  writeJSON(layoutsPath(), layouts);
+  if (!writeJSON(layoutsPath(), layouts)) return `Could not save “${name}”: the workflow’s data folder isn’t writable`;
   return `Saved “${name}” · ${list.length} display${list.length === 1 ? "" : "s"}`;
 }
 
@@ -1307,7 +1320,7 @@ function layoutDelete(a) {
   const layouts = loadLayouts();
   if (!(a.name in layouts)) return `No arrangement named “${a.name}”`;
   delete layouts[a.name];
-  writeJSON(layoutsPath(), layouts);
+  if (!writeJSON(layoutsPath(), layouts)) return `Could not delete “${a.name}”: the workflow’s data folder isn’t writable`;
   return `Deleted “${a.name}”`;
 }
 
