@@ -40,6 +40,25 @@ Raycast demand this workflow replaces (downloads, 2026-09-26):
 - Not verified on real hardware: the Control Center automation for `anc` (no AirPods connected; on macOS 27 System Events saw no menu bar items from this terminal), the CoreAudio mute switch for USB microphones, the two CLIs against real monitors, and brightness on Intel Macs (DisplayServices is present there too, but untested).
 - To check in real Alfred before release: `anc` with AirPods Pro/Max in English and another language; `res` switch and restore; `layout` restore with two displays; `bright` on an external display.
 
+## Round 4 (post-release audit, 2026-09-27)
+- Alfred runtime: every Script Filter and action run through `/bin/bash` with `env -i` (PATH=/usr/bin:/bin:/usr/sbin:/sbin, no LANG) and Alfred's variables with spaced paths, on a fresh install: all fine (UTF-8 argv, JSON, data folder created on demand, 120–220 ms per keystroke). Optional CLIs never came from PATH; the search list now also covers Nix and `~/bin`.
+- `v1.0.0` state files (`layouts.json`, `mic.json`, `anc.json`) are unchanged; `hidden.json` and `confirm-delete.json` are new and optional.
+- macOS 13–15 Control Center (from the Raycast airpods-noise-control history, PR #15120, and AX dumps in matthiskeuler/airpods-anc-toggle and dchersey/air-defense): menu extras live in ControlCenter (MenuBarAgent on 27, popovers still in ControlCenter); device rows carry `sound-device-<name>` and the disclosure triangle follows the row on 15+, but precedes it on 13/14. Added: find the Sound extra by its localised description when it has no identifier; expand the selected output without identifiers (triangle before the row); a 5 s limit on the popover search and closing only the windows the script opened. Still **unverified on real hardware** for 13/14/15.
+- Implemented: `audio`/`mic` steps (`+10`, `-10`); ⌥↩ output and input together (AirPods' two CoreAudio devices are paired by UID); ⌃↩ hide devices with a `hidden` view; `layout` ⌥↩ now asks before deleting; BetterDisplay reported as "open BetterDisplay" when `betterdisplaycli` is installed but the app isn't running; built-in brightness no longer depends on `DisplayServicesCanChangeBrightness`; actions print nothing at all when silent.
+- `ListeningMode.loctable` may be missing on older macOS: then only English labels and the row structure are used (other languages rely on `sound-device-*` identifiers).
+
+## Ideas for v1.1
+Ranked by value/risk (sources: raycast/extensions issues for audio-device, mute-microphone, display-modes, displayplacer, airpods-noise-control; Alfred Gallery Audio Switcher and Resolution Changer):
+1. Favourite output/input devices with Hotkeys to switch to each and to toggle between two (Audio Switcher, Raycast favourites and "combos").
+2. Favourite resolutions per display and a Hotkey to toggle between two modes (display-modes #12857, #17619; Resolution Changer).
+3. ⌘↩ sets the alert device explicitly, which ends macOS's "follow the selected output" mode (raycast #25075): offer a way back or explain it in the subtitle.
+4. Conversation Awareness on/off in `anc` (same Sound menu section); a configurable cycle of modes for the Hotkey (airpods-noise-control #5649).
+5. `anc`: restore the previously frontmost app after closing the Sound menu; handle an auto-hidden menu bar (#25157).
+6. Input source switching (DDC) through m1ddc / BetterDisplay (betterdisplay #24253).
+7. BetterDisplay: address displays by tagID/UUID instead of the displayID it documents as changeable (resolved at ↩ today, so low impact).
+8. Mono audio and balance toggles (Audio Switcher #10).
+9. AirPlay / HomePod outputs that aren't connected yet (needs private API; high risk).
+
 ## Milestones
 1. [x] Script filter prototype for the main keyword
 2. [x] Actions + modifiers, Universal Actions / File Actions where relevant
