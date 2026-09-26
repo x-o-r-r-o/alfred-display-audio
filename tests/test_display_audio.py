@@ -856,10 +856,11 @@ class AuditPass4Tests(unittest.TestCase):
     def test_labels_passed_to_applescript(self):
         cc = loctables({
             "ListeningMode": {"de": {"LISTENING_MODE_OFF": "Aus", "Transparency": "Transparenz", "Adaptive": "Adaptiv", "Noise Cancellation": "Geräuschunterdrückung"}},
-            "Sound": {"de": {"Fixed": "Fixiert", "Head Tracked": "Kopferfassung", "Spatialize Stereo": "Stereo zu 3D"}},
+            "Sound": {"de": {"Fixed": "Fixiert", "Head Tracked": "Kopferfassung", "Spatialize Stereo": "Stereo zu 3D", "Sound": "Ton"}},
         })
         out = act({"op": "anc", "mode": "Transparency"}, fixture(audio=audio(output=92)), DA_CC_RESOURCES=cc)
-        self.assertIn("auto 'Aus\tTransparenz\tAdaptiv\tGeräuschunterdrückung' 'Fixiert\tKopferfassung\tStereo zu 3D'", out)
+        # the last argument names the Sound menu extra, for menu bars whose items have no identifier
+        self.assertIn("auto 'Aus\tTransparenz\tAdaptiv\tGeräuschunterdrückung' 'Fixiert\tKopferfassung\tStereo zu 3D' Ton\n", out)
         # no string tables (older macOS): empty labels, the script falls back to English and structure
         out = act({"op": "anc", "mode": "Transparency"}, fixture(audio=audio(output=92)), DA_CC_RESOURCES=os.path.join(TMP, "nope"))
         self.assertIn("auto '' ''", out)

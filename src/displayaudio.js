@@ -416,7 +416,11 @@ function ds() {
 }
 
 function realBrightness(id) {
-  if (!ds() || !$.DisplayServicesCanChangeBrightness(id)) return null;
+  if (!ds()) return null;
+  // CanChangeBrightness is advisory: recent macOS can report false for the built-in panel while
+  // Get/Set still work, so a built-in display is always tried.
+  cg();
+  if (!$.DisplayServicesCanChangeBrightness(id) && !$.CGDisplayIsBuiltin(id)) return null;
   const buf = $.NSMutableData.dataWithLength(4);
   if ($.DisplayServicesGetBrightness(id, buf.mutableBytes) !== 0) return null;
   const v = f32of(binOf(buf));
@@ -1492,7 +1496,7 @@ function ancLabels() {
   if (!modes[1] || !modes[3]) return null;
   const other = ["Fixed", "Head Tracked", "Spatialize Stereo"].map((k) => sd[k]).filter((v) => typeof v === "string" && v);
   const one = (v) => String(v).replace(/[\t\n\r]/g, " ");
-  return { modes: modes.map(one).join("\t"), other: other.map(one).join("\t") };
+  return { modes: modes.map(one).join("\t"), other: other.map(one).join("\t"), sound: typeof sd.Sound === "string" ? one(sd.Sound) : "" };
 }
 
 function ancAction(a) {
@@ -1508,7 +1512,7 @@ function ancAction(a) {
   } catch (e) {
     labels = null; // fall back to the English names and the row structure
   }
-  const argv = [...modes.slice(0, 1), modes[1] || "", device, env("anc_three", "auto"), labels ? labels.modes : "", labels ? labels.other : ""];
+  const argv = [...modes.slice(0, 1), modes[1] || "", device, env("anc_three", "auto"), labels ? labels.modes : "", labels ? labels.other : "", labels ? labels.sound : ""];
   const script = `${$.NSFileManager.defaultManager.currentDirectoryPath.js}/anc.applescript`;
   let res;
   if (DRY) {

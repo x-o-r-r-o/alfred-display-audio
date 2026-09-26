@@ -1,6 +1,6 @@
 -- Set the AirPods listening mode through the Sound menu of Control Center.
 --
---   osascript anc.applescript <mode> [<other mode>] [<device name>] [auto|off|adaptive] [<labels>] [<other labels>]
+--   osascript anc.applescript <mode> [<other mode>] [<device name>] [auto|off|adaptive] [<labels>] [<other labels>] [<Sound>]
 --
 -- <mode> and <other mode> are Off, Transparency, Adaptive or Noise Cancellation. With <other mode>
 -- it toggles: <mode> is selected unless it already is, in which case <other mode> is.
@@ -9,7 +9,8 @@
 -- macOS has no public API for listening modes (IOBluetoothDevice's private setListeningMode: no
 -- longer reaches the AirPods on recent macOS), so this drives the Sound menu the way a person would.
 -- To stay independent of the system language:
---   * the Sound menu extra is found by its AXIdentifier "com.apple.menuextra.sound",
+--   * the Sound menu extra is found by its AXIdentifier "com.apple.menuextra.sound" (or, where menu
+--     extras carry no identifier, by its description: <Sound> is Control Center's own word for it),
 --     or through Control Center's "controlcenter-volume" tile when Sound isn't in the menu bar;
 --   * the Listening Mode rows are found by structure: below the selected output device's row, the
 --     first run of 3-4 checkboxes after a heading. Their labels confirm the run (and rule out Spatial
@@ -24,6 +25,8 @@ property englishOther : {"Fixed", "Head Tracked", "Head-Tracked", "Spatialize St
 -- localised labels (see setLabels); "" where unknown
 property modeLabels : {"", "", "", ""}
 property otherLabels : {}
+-- the Sound menu extra's description in the current language
+property soundNames : {"Sound"}
 
 on splitTabs(t)
 	if t is "" then return {}
@@ -71,6 +74,7 @@ on run argv
 	set otherText to ""
 	if (count of argv) > 4 then set labelText to item 5 of argv
 	if (count of argv) > 5 then set otherText to item 6 of argv
+	if (count of argv) > 6 and item 7 of argv is not "" then set end of soundNames to item 7 of argv
 	my setLabels(labelText, otherText)
 
 	try
@@ -194,6 +198,26 @@ on findMenuExtra(wanted)
 	return missing value
 end findMenuExtra
 
+-- A menu extra by its description, in the menu bars of the processes that host menu extras.
+on findMenuExtraNamed(names)
+	tell application "System Events"
+		repeat with procName in {"ControlCenter", "MenuBarAgent", "SystemUIServer"}
+			if exists process (contents of procName) then
+				try
+					repeat with mb in (every menu bar of process (contents of procName))
+						repeat with mi in (every menu bar item of mb)
+							try
+								if names contains (value of attribute "AXDescription" of mi) then return contents of mi
+							end try
+						end repeat
+					end repeat
+				end try
+			end if
+		end repeat
+	end tell
+	return missing value
+end findMenuExtraNamed
+
 on press(el)
 	tell application "System Events"
 		try
@@ -212,6 +236,7 @@ on openSoundMenu()
 	end try
 	set my baseWindows to n
 	set soundItem to my findMenuExtra("com.apple.menuextra.sound")
+	if soundItem is missing value then set soundItem to my findMenuExtraNamed(soundNames)
 	if soundItem is not missing value then
 		my press(soundItem)
 		return soundItem
@@ -449,35 +474,43 @@ on expandDevice(sa, deviceName)
 		repeat with i from 1 to count of els
 			set el to item i of els
 			set ident to my identifierOf(el)
-			if ident starts with "sound-device-" then
+			-- a device row: its identifier (macOS 15 and later) or, without identifiers, its label
+			-- starting with the output's name (the label can add the battery level)
+			set isDevice to ident starts with "sound-device-"
+			if not isDevice and ident is "" and deviceName is not "" then
+				try
+					set isDevice to (role of el) is "AXCheckBox" and (my labelOf(el)) starts with deviceName
+				end try
+			end if
+			if isDevice then
 				set selectedRow to false
 				try
 					set selectedRow to (role of el) is "AXCheckBox" and my isOn(el)
 				end try
-				if selectedRow and (deviceName is "" or ident is ("sound-device-" & deviceName)) then
-					repeat with j from (i + 1) to (i + 3)
-						if j > (count of els) then exit repeat
-						set t to item j of els
-						try
-							if (role of t) is "AXDisclosureTriangle" then
-								if not my isOn(t) then
-									click t
-									return true
-								end if
-								return false
-							end if
-						end try
-					end repeat
-					-- the triangle can also come before the row
-					if i > 1 then
-						set t to item (i - 1) of els
-						try
-							if (role of t) is "AXDisclosureTriangle" and not my isOn(t) then
-								click t
-								return true
-							end if
-						end try
+				if selectedRow and (deviceName is "" or ident is "" or ident is ("sound-device-" & deviceName)) then
+					-- where its disclosure triangle is: after the row, with the same identifier, on
+					-- macOS 15 and later; right before it on macOS 13 and 14 (no identifiers there)
+					if ident is "" then
+						set spots to {i - 1}
+					else
+						set spots to {i + 1, i + 2, i + 3, i - 1}
 					end if
+					repeat with spot in spots
+						set j to contents of spot
+						if j ≥ 1 and j ≤ (count of els) then
+							set t to item j of els
+							try
+								if (role of t) is "AXDisclosureTriangle" then
+									set tid to my identifierOf(t)
+									if ident is "" or tid is "" or tid is ident then
+										if my isOn(t) then return false
+										click t
+										return true
+									end if
+								end if
+							end try
+						end if
+					end repeat
 				end if
 			end if
 		end repeat
