@@ -8,20 +8,20 @@ The AirPods listening mode is changed through the Sound menu of Control Center, 
 
 ## Usage
 
-Switch the sound output via the `audio` keyword. The current device is marked with ✓, and devices with the same name are numbered. Type a number to set the volume, like `audio 50`, or `mute` / `unmute`.
+Switch the sound output via the `audio` keyword. The current device is marked with ✓, and devices with the same name are numbered. Type a number to set the volume, like `audio 50`, a step like `audio +10` or `audio -10`, or `mute` / `unmute`.
 
 ![Choosing an output device](images/audio.png)
 
 * <kbd>↩</kbd> Set as the output.
 * <kbd>⌘</kbd><kbd>↩</kbd> Set as the output and for alerts and sound effects.
 
-Type `in` after the keyword to list input devices instead, like `audio in` or `audio in 70` to set the input level.
+Type `in` after the keyword to list input devices instead, like `audio in`, or `audio in 70` / `audio in +10` to set the input level.
 
 ![Choosing an input device](images/audio-in.png)
 
 ### Microphone
 
-Mute or unmute the microphone via the `mic` keyword. Muting remembers the input level, and unmuting restores it; microphones without an adjustable level are muted with their own mute switch. Type a number to set the input level, like `mic 70`. Below the toggle are the input devices, to switch microphones.
+Mute or unmute the microphone via the `mic` keyword. Muting remembers the input level, and unmuting restores it; microphones without an adjustable level are muted with their own mute switch. Type a number to set the input level, like `mic 70`, or a step like `mic +10`. Below the toggle are the input devices, to switch microphones.
 
 ![Muting the microphone](images/mic.png)
 

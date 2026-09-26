@@ -625,6 +625,28 @@ function parseLevel(q) {
   return m ? Number(m[1]) : null;
 }
 
+// "+10" / "-10": a signed step, or null
+function parseStep(q) {
+  const m = /^([+-])\s*(\d{1,3})\s*%?$/.exec(q.trim());
+  return m ? (m[1] === "-" ? -Number(m[2]) : Number(m[2])) : null;
+}
+
+function signed(n) {
+  return `${n < 0 ? "-" : "+"}${Math.abs(n)}%`;
+}
+
+// The row that sets the volume (output) or input level to `level`, or changes it by `step`.
+function volumeRow(scope, cur, level, step, devName, muted) {
+  const target = step !== null ? Math.max(0, Math.min(100, Math.round(cur + step))) : level;
+  const what = scope === "output" ? "volume" : "input level";
+  return {
+    title: step !== null ? `${scope === "output" ? "Volume" : "Input level"} ${signed(step)} → ${target}%` : `Set ${scope === "output" ? `${scope} volume` : what} to ${level}%`,
+    subtitle: `Currently ${pct(cur)}${muted ? " (muted)" : ""} · ${devName}`,
+    arg: action("volume", step !== null ? { scope, rel: step } : { scope, value: level }),
+    icon: icon(scope === "output" ? (target === 0 ? "muted" : "volume") : target === 0 ? "mic_off" : "mic"),
+  };
+}
+
 function audioItems(query) {
   let q = query.trim();
   let scope = "output";
@@ -636,18 +658,18 @@ function audioItems(query) {
   const vol = HW.volume();
   const items = [];
   const level = parseLevel(q);
-  if (level !== null) {
+  const step = parseStep(q);
+  if (level !== null || step !== null) {
     const cur = scope === "output" ? vol.output : vol.input;
     const devName = currentDeviceName(scope) || `No ${scope} device`;
-    if (level > 100) return [info("Volume goes from 0 to 100", `Type a number like 50`, "error")];
+    if (level > 100 || Math.abs(step) > 100) return [info("Volume goes from 0 to 100", `Type a number like 50, or +10 / -10`, "error")];
     if (cur === null)
       return [info(`${devName} has no adjustable volume`, "macOS reports no software volume for this device", "error")];
-    return [{
-      title: `Set ${scope} volume to ${level}%`,
-      subtitle: `Currently ${pct(cur)}${scope === "output" && vol.muted ? " (muted)" : ""} · ${devName}`,
-      arg: action("volume", { scope, value: level }),
-      icon: icon(scope === "output" ? (level === 0 ? "muted" : "volume") : level === 0 ? "mic_off" : "mic"),
-    }];
+    const row = volumeRow(scope, cur, level, step, devName, scope === "output" && vol.muted);
+    // the classic wording for an absolute output level
+    if (step === null && scope === "output") row.title = `Set output volume to ${level}%`;
+    if (step === null && scope === "input") row.title = `Set input volume to ${level}%`;
+    return [row];
   }
   if (scope === "output" && /^(mute|unmute)$/i.test(q)) {
     const mute = /^mute$/i.test(q);
@@ -671,7 +693,7 @@ function audioItems(query) {
     const v = scope === "output" ? vol.output : vol.input;
     items.push(info(
       scope === "output" ? (vol.muted ? "Volume: muted" : v === null ? "Volume: not adjustable" : `Volume ${pct(v)}`) : v === null ? "Input level: not adjustable" : `Input level ${pct(v)}`,
-      "Type a number to change it, e.g. 50" + (scope === "output" ? " · “mute” / “unmute”" : ""),
+      "Type a number to change it, e.g. 50 or +10" + (scope === "output" ? " · “mute” / “unmute”" : ""),
       scope === "output" ? (vol.muted ? "muted" : "volume") : "mic"
     ));
     items.push(info(
@@ -713,18 +735,14 @@ function micItems(query) {
   else if (vol.input === null) {
     // no software level (some USB microphones): use the device's own mute switch if it has one
     if (hwMute === null) items.push(info(`${name} has no adjustable input level`, "It can't be muted from here", "error"));
-    else if (parseLevel(q) !== null) return [info(`${name} has no adjustable input level`, "Type “mute” or “unmute” instead", "error")];
+    else if (parseLevel(q) !== null || parseStep(q) !== null) return [info(`${name} has no adjustable input level`, "Type “mute” or “unmute” instead", "error")];
     else if (!q || matches(q, "mute unmute toggle microphone")) items.push(toggleRow(hwMute, "On"));
   } else {
     const level = parseLevel(q);
-    if (level !== null) {
-      if (level > 100) return [info("Input level goes from 0 to 100", "Type a number like 70", "error")];
-      return [{
-        title: `Set input level to ${level}%`,
-        subtitle: `Currently ${pct(vol.input)} · ${name}`,
-        arg: action("volume", { scope: "input", value: level }),
-        icon: icon(level === 0 ? "mic_off" : "mic"),
-      }];
+    const step = parseStep(q);
+    if (level !== null || step !== null) {
+      if (level > 100 || Math.abs(step) > 100) return [info("Input level goes from 0 to 100", "Type a number like 70, or +10 / -10", "error")];
+      return [volumeRow("input", vol.input, level, step, name, false)];
     }
     const muted = vol.input === 0 || hwMute === true;
     if (!q || matches(q, "mute unmute toggle microphone")) items.push(toggleRow(muted, `Input level ${pct(vol.input)}`));
@@ -1461,10 +1479,13 @@ function deviceAction(a) {
 
 function volumeAction(a) {
   const scope = a.scope === "input" ? "input" : "output";
-  const v = Math.max(0, Math.min(100, Math.round(Number(a.value))));
-  if (!isFinite(v)) return "Invalid volume";
-  if ((scope === "input" ? HW.volume().input : HW.volume().output) === null)
+  const cur = scope === "input" ? HW.volume().input : HW.volume().output;
+  if (cur === null)
     return `${currentDeviceName(scope) || `No ${scope} device`} has no adjustable ${scope === "input" ? "input level" : "volume"}`;
+  // a step ("+10") is applied to the level at the moment of ↩, not when the row was shown
+  const rel = typeof a.rel === "number" && isFinite(a.rel) ? a.rel : null;
+  const v = Math.max(0, Math.min(100, Math.round(rel !== null ? cur + rel : Number(a.value))));
+  if (!isFinite(v)) return "Invalid volume";
   if (scope === "input") {
     if (v > 0) {
       const { path, state } = micState();

@@ -1051,6 +1051,21 @@ class Round4Tests(unittest.TestCase):
         self.assertIn("Microphone on · 80%", self.run_like_alfred(
             self.alfred_env(root, DA_FIXTURE=fixture(audio=audio(vol={"input": 0}))), "act", '{"op":"mic-unmute"}'))
 
+    def test_volume_steps(self):
+        it = sf("audio", "+10")
+        self.assertEqual(titles(it), ["Volume +10% → 50%"])
+        self.assertEqual(json.loads(it[0]["arg"]), {"op": "volume", "scope": "output", "rel": 10})
+        self.assertEqual(titles(sf("audio", "-50")), ["Volume -50% → 0%"])
+        self.assertEqual(titles(sf("audio", "in +5")), ["Input level +5% → 65%"])
+        self.assertEqual(titles(sf("mic", "- 20 %")), ["Input level -20% → 40%"])
+        self.assertIs(sf("audio", "+101")[0]["valid"], False)
+        # applied to the level at ↩ (40 in the fixture), and a step up from muted unmutes
+        self.assertIn("set volume outputVolume 50", act({"op": "volume", "scope": "output", "rel": 10}))
+        muted = fixture(audio=audio(vol={"muted": True}))
+        self.assertIn("outputVolume 30, outputMuted false", act({"op": "volume", "scope": "output", "rel": -10}, muted))
+        self.assertIn("inputVolume 100", act({"op": "volume", "scope": "input", "rel": 90}))
+        self.assertIn("Invalid volume", act({"op": "volume", "scope": "output", "rel": "x"}))
+
     def test_betterdisplay_not_running(self):
         bins = fake_bin("betterdisplaycli", 'exit 1\n')
         it = sf("bright", "", fixture(displays=[mac(), dell()]), bins=bins, DA_BD_RUNNING="0")
