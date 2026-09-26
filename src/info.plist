@@ -79,6 +79,16 @@
 				<key>vitoclose</key>
 				<false/>
 			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>524288</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
 		</array>
 		<key>805D9EBE-5E4B-5206-BED2-31371F63E2D0</key>
 		<array>
@@ -110,6 +120,16 @@
 				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
 				<key>modifiers</key>
 				<integer>1048576</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>524288</integer>
 				<key>modifiersubtext</key>
 				<string></string>
 				<key>vitoclose</key>
@@ -658,8 +678,12 @@ Switch the sound output via the `audio` keyword. The current device is marked wi
 
 * &lt;kbd&gt;↩&lt;/kbd&gt; Set as the output.
 * &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Set as the output and for alerts and sound effects.
+* &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Set as the output and input, for headsets and AirPods with a microphone.
 
 Type `in` after the keyword to list input devices instead, like `audio in`, or `audio in 70` / `audio in +10` to set the input level.
+
+* &lt;kbd&gt;↩&lt;/kbd&gt; Set as the input.
+* &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Set as the input and output.
 
 ### Microphone
 

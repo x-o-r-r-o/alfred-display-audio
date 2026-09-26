@@ -14,10 +14,14 @@ Switch the sound output via the `audio` keyword. The current device is marked wi
 
 * <kbd>↩</kbd> Set as the output.
 * <kbd>⌘</kbd><kbd>↩</kbd> Set as the output and for alerts and sound effects.
+* <kbd>⌥</kbd><kbd>↩</kbd> Set as the output and input, for headsets and AirPods with a microphone.
 
 Type `in` after the keyword to list input devices instead, like `audio in`, or `audio in 70` / `audio in +10` to set the input level.
 
 ![Choosing an input device](images/audio-in.png)
+
+* <kbd>↩</kbd> Set as the input.
+* <kbd>⌥</kbd><kbd>↩</kbd> Set as the input and output.
 
 ### Microphone
 

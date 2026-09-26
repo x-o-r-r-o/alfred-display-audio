@@ -581,6 +581,22 @@ function usableDevices(scope) {
   );
 }
 
+// The same headset or AirPods on the other side (output ↔ input): the device itself when it has
+// both, else its twin that macOS lists separately (AirPods: "<address>:output" / "<address>:input"),
+// else the one other-side device with exactly the same name.
+function partnerDevice(dev, scope) {
+  const other = usableDevices(scope === "output" ? "input" : "output");
+  const same = other.find((d) => d.id === dev.id);
+  if (same) return same;
+  const m = /^(.*):(output|input)$/i.exec(dev.uid || "");
+  if (m) {
+    const twin = other.find((d) => d.uid && d.uid.toLowerCase() === `${m[1]}:${scope === "output" ? "input" : "output"}`.toLowerCase());
+    if (twin) return twin;
+  }
+  const named = other.filter((d) => d.name === dev.name);
+  return named.length === 1 ? named[0] : null;
+}
+
 function deviceRows(scope, query) {
   const all = usableDevices(scope);
   const defs = HW.audioDefaults();
@@ -609,6 +625,10 @@ function deviceRows(scope, query) {
           : { arg: action("device", { scope, uid: d.uid, id: d.id, name: d.name, system: true }), subtitle: "Set as output and for alerts and sound effects" },
       };
     else row.mods = { cmd: { arg, subtitle: `Set as ${scope}` } };
+    // ⌥: headsets and AirPods for both sound and microphone
+    row.mods.alt = partnerDevice(d, scope)
+      ? { arg: action("device", { scope, uid: d.uid, id: d.id, name: d.name, both: true }), subtitle: scope === "output" ? "Set as output and input (its microphone too)" : "Set as input and output (its speakers too)" }
+      : { arg, valid: false, subtitle: scope === "output" ? "This device has no microphone of its own" : "This device has no speakers of its own" };
     return row;
   });
 }
@@ -1469,6 +1489,13 @@ function deviceAction(a) {
   const dev = usableDevices(scope).find((d) => (a.uid ? d.uid === a.uid : d.id === a.id));
   if (!dev) return `${clean(a.name || "") || "That device"} is no longer connected`;
   setDefaultDevice(scope, dev);
+  if (a.both) {
+    const other = scope === "output" ? "input" : "output";
+    const p = partnerDevice(dev, scope);
+    if (!p) return `${scope === "output" ? "🔊" : "🎙"} ${clean(dev.name)} (it has no ${other === "input" ? "microphone" : "speakers"})`;
+    setDefaultDevice(other, p);
+    return `🎧 ${clean(dev.name)} · output and input`;
+  }
   if (a.system && scope === "output") {
     if (dev.canSys === false) return `${clean(dev.name)} is now the output (it can't play alerts)`;
     setDefaultDevice("system", dev);

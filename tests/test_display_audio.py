@@ -1066,6 +1066,28 @@ class Round4Tests(unittest.TestCase):
         self.assertIn("inputVolume 100", act({"op": "volume", "scope": "input", "rel": 90}))
         self.assertIn("Invalid volume", act({"op": "volume", "scope": "output", "rel": "x"}))
 
+    def test_output_and_input_together(self):
+        pods_in = dev(99, "Xorro’s AirPods Pro", "AA-BB-CC-DD-EE-FF:input", "blue", inp=1)
+        pods_out = dev(92, "Xorro’s AirPods Pro", "AA-BB-CC-DD-EE-FF:output", "blue", out=1)
+        devices = [d for d in DEVICES if d["id"] != 92] + [pods_out, pods_in]
+        fx = fixture(audio=audio(devices))
+        row = find(sf("audio", "airpods", fx), "Xorro’s AirPods Pro")
+        self.assertEqual(json.loads(row["mods"]["alt"]["arg"])["both"], True)
+        out = act(row["mods"]["alt"]["arg"], fx)
+        self.assertIn("'dOut', device=92", out)
+        self.assertIn("'dIn ', device=99", out)
+        self.assertTrue(out.endswith("output and input"), out)
+        # from the input side, and for a USB headset that is one device with both directions
+        row = find(sf("mic", "airpods", fx), "Xorro’s AirPods Pro")
+        self.assertIn("'dOut', device=92", act(row["mods"]["alt"]["arg"], fx))
+        usb = find(sf("audio", "usb", fx), "USB Audio Device (1)")
+        out = act(usb["mods"]["alt"]["arg"], fx)
+        self.assertIn("'dOut', device=93", out)
+        self.assertIn("'dIn ', device=93", out)
+        # speakers without a microphone of their own: ⌥ explains instead of guessing
+        spk = find(sf("audio", "speakers", fx), "✓ MacBook Pro Speakers")
+        self.assertIs(spk["mods"]["alt"]["valid"], False)
+
     def test_betterdisplay_not_running(self):
         bins = fake_bin("betterdisplaycli", 'exit 1\n')
         it = sf("bright", "", fixture(displays=[mac(), dell()]), bins=bins, DA_BD_RUNNING="0")
