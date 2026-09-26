@@ -680,6 +680,9 @@ class ActionTests(unittest.TestCase):
         self.assertEqual(act("not json"), "Invalid action")
         self.assertEqual(act({"op": "nope"}), "Unknown action")
         self.assertEqual(act({"op": "open", "url": "file:///etc/hosts"}), "")
+        for bad in ["null", "[]", '{"op":"bright","targets":"x"}', '{"op":"layout-save","name":{"a":1}}']:
+            self.assertEqual(act(bad), "Invalid action")
+        self.assertEqual(act({"op": "bright", "targets": [{}]}), "That display is not connected")
 
     def test_unknown_command(self):
         data = json.loads(call(["nope", ""], fixture()))

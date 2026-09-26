@@ -1060,9 +1060,9 @@ function brightAction(a) {
   const done = [];
   const failed = [];
   for (const t of a.targets || []) {
-    const d = findDisplay(list, t.uuid, t.id);
+    const d = t && typeof t === "object" ? findDisplay(list, t.uuid, t.id) : null;
     if (!d) {
-      failed.push(`${t.name} is not connected`);
+      failed.push(`${clean((t && t.name) || "That display")} is not connected`);
       continue;
     }
     let cur = null;
@@ -1460,6 +1460,10 @@ function act(json) {
   } catch (e) {
     return "Invalid action";
   }
+  // args come from this workflow's own rows, but keep a hand-edited or stale one harmless
+  if (!a || typeof a !== "object" || Array.isArray(a)) return "Invalid action";
+  if ("name" in a && typeof a.name !== "string") return "Invalid action";
+  if ("targets" in a && !Array.isArray(a.targets)) return "Invalid action";
   switch (a.op) {
     case "device": return deviceAction(a);
     case "volume": return volumeAction(a);
