@@ -484,9 +484,17 @@ class LayoutTests(unittest.TestCase):
         self.assertIn("CGConfigureDisplayOrigin(display=2, x=1728, y=-200)", out)
         self.assertNotIn("display=1,", out)
         self.assertIn("Restored", out)
+        # ⌥↩ only asks: Alfred reopens the keyword with "Delete …?" and "Cancel"
         out = act(item["mods"]["alt"]["arg"], moved, data=d)
+        self.assertEqual(out, 'DRY RUN: Alfred search "layout "')
+        self.assertIn("Desk “home” 'x'", load(os.path.join(d, "layouts.json")))
+        confirm = sf("layout", "", moved, data=d)
+        self.assertEqual(titles(confirm), ["Delete “Desk “home” 'x'”?", "Cancel"])
+        self.assertIn("Current arrangement", titles(sf("layout", "desk", moved, data=d))[0] + "Current arrangement")
+        out = act(confirm[0]["arg"], moved, data=d)
         self.assertIn("Deleted", out)
         self.assertEqual(load(os.path.join(d, "layouts.json")), {})
+        self.assertFalse(os.path.exists(os.path.join(d, "confirm-delete.json")))
 
     def test_missing_display(self):
         d = data_dir("layout-missing")
@@ -1087,6 +1095,41 @@ class Round4Tests(unittest.TestCase):
         # speakers without a microphone of their own: ⌥ explains instead of guessing
         spk = find(sf("audio", "speakers", fx), "✓ MacBook Pro Speakers")
         self.assertIs(spk["mods"]["alt"]["valid"], False)
+
+    def test_delete_needs_confirmation(self):
+        d = data_dir("round4-confirm")
+        fx = fixture(displays=[mac(), dell()])
+        act({"op": "layout-save", "name": "Desk"}, fx, data=d)
+        act({"op": "layout-save", "name": "constructor"}, fx, data=d)
+        alt = find(sf("layout", "", fx, data=d), "✓ Desk")["mods"]["alt"]
+        self.assertIn("confirm", alt["subtitle"])
+        act(alt["arg"], fx, data=d, keyword_layout=" disp ")
+        self.assertIn("Desk", load(os.path.join(d, "layouts.json")))
+        # a typed query shows the normal list; the empty one asks
+        self.assertNotIn("Cancel", titles(sf("layout", "desk", fx, data=d)))
+        cancel = sf("layout", "", fx, data=d)[1]
+        self.assertEqual(act(cancel["arg"], fx, data=d, keyword_layout="disp"), 'DRY RUN: Alfred search "disp "')
+        self.assertFalse(os.path.exists(os.path.join(d, "confirm-delete.json")))
+        self.assertTrue(find(sf("layout", "", fx, data=d), "✓ Desk"))
+        # a stale request (older than a minute) is ignored
+        with open(os.path.join(d, "confirm-delete.json"), "w") as f:
+            json.dump({"name": "Desk", "t": 0}, f)
+        self.assertTrue(find(sf("layout", "", fx, data=d), "✓ Desk"))
+        # names that are Object.prototype keys are only "present" when saved
+        self.assertIn("No arrangement named", act({"op": "layout-delete", "name": "toString"}, fx, data=d))
+        self.assertIn("No arrangement named", act({"op": "layout-restore", "name": "hasOwnProperty"}, fx, data=d))
+        self.assertIn("No arrangement named", act({"op": "layout-delete-ask", "name": "valueOf"}, fx, data=d))
+        self.assertEqual(act({"op": "layout-delete", "name": "constructor"}, fx, data=d), "Deleted “constructor”")
+
+    def test_silent_success_prints_nothing(self):
+        # a Notification set to "only show if populated" must get no output at all, not even "\n"
+        e = dict(os.environ, alfred_workflow_data=data_dir("round4-silent"), DA_BIN_DIRS=EMPTY_BIN)
+        for k in ("DA_FIXTURE", "DA_DRY_RUN"):
+            e.pop(k, None)
+        out = subprocess.run(["osascript", "-l", "JavaScript", "./displayaudio.js", "act", '{"op":"open","url":"file:///x"}'],
+                             cwd=SRC, env=e, capture_output=True, timeout=60)
+        self.assertEqual(out.stdout, b"")
+        self.assertEqual(out.returncode, 0)
 
     def test_betterdisplay_not_running(self):
         bins = fake_bin("betterdisplaycli", 'exit 1\n')

@@ -1187,6 +1187,10 @@ function layoutsPath() {
 }
 
 // A prototype-less object, so names like "constructor" or "__proto__" are ordinary keys.
+function hasLayout(layouts, name) {
+  return typeof name === "string" && Object.prototype.hasOwnProperty.call(layouts, name);
+}
+
 function loadLayouts() {
   const l = readJSON(layoutsPath(), {});
   const out = Object.create(null);
@@ -1248,8 +1252,15 @@ function layoutItems(query) {
   } catch (e) {
     return [info("Could not read displays", String(e.message || e), "error")];
   }
-  const snap = snapshot(list);
   const layouts = loadLayouts();
+  // a delete waiting for confirmation (set by ⌥↩, then Alfred reopens with an empty query)
+  const pending = pendingDelete();
+  if (!query.trim() && pending && hasLayout(layouts, pending))
+    return [
+      { title: `Delete “${clean(pending)}”?`, subtitle: "↩ Delete this arrangement · This can't be undone", arg: action("layout-delete", { name: pending }), icon: icon("error") },
+      { title: "Cancel", subtitle: "Keep the arrangement", arg: action("layout-delete-cancel"), icon: icon("layout") },
+    ];
+  const snap = snapshot(list);
   const dp = which("displayplacer");
   const engine = dp ? "via displayplacer" : "resolutions and positions";
   const q = query.trim();
@@ -1259,7 +1270,7 @@ function layoutItems(query) {
   const saveRow = () =>
     name
       ? {
-          title: `${name in layouts ? "Replace" : "Save"} “${name}”`,
+          title: `${hasLayout(layouts, name) ? "Replace" : "Save"} “${name}”`,
           subtitle: `Save the current arrangement (${list.length} display${list.length === 1 ? "" : "s"}, ${engine})`,
           arg: action("layout-save", { name }),
           icon: icon("save"),
@@ -1282,13 +1293,13 @@ function layoutItems(query) {
         : `${current ? "Current arrangement" : "↩ Restore"} · ${describeArrangement(l.displays || [])}`,
       arg,
       icon: icon("layout"),
-      mods: { alt: { arg: action("layout-delete", { name: n }), subtitle: `Delete “${clean(n)}”` } },
+      mods: { alt: { arg: action("layout-delete-ask", { name: n }), subtitle: `Delete “${clean(n)}”… (asks to confirm)` } },
     };
   });
   if (!q)
     items.push(info("Current arrangement", describeArrangement(snap) || "No displays", "layout", { autocomplete: "save " }));
   items.push(...saved);
-  if (q && !(name in layouts)) items.push(saveRow());
+  if (q && !hasLayout(layouts, name)) items.push(saveRow());
   if (!q && !names.length) items.push(info("No saved arrangements yet", "Type “save” and a name to save this one", "info", { autocomplete: "save " }));
   return items;
 }
@@ -1313,7 +1324,7 @@ function layoutSave(a) {
 
 function layoutRestore(a) {
   const layouts = loadLayouts();
-  const l = layouts[a.name];
+  const l = hasLayout(layouts, a.name) ? layouts[a.name] : null;
   if (!l) return `No arrangement named “${a.name}”`;
   const list = displays();
   const missing = missingDisplays(l.displays, list);
@@ -1354,9 +1365,46 @@ function layoutRestore(a) {
   return [`Restored “${a.name}”`, missing.length ? `Not connected: ${missing.join(", ")}` : "", note].filter(Boolean).join("\n");
 }
 
+// ⌥↩ never deletes by itself: it remembers the name for a minute and reopens the keyword,
+// which then shows "Delete …?" and "Cancel".
+const CONFIRM_WINDOW = 60e3;
+function confirmPath() {
+  return `${dataDir()}/confirm-delete.json`;
+}
+function pendingDelete() {
+  const c = readObject(confirmPath());
+  return typeof c.name === "string" && typeof c.t === "number" && Date.now() - c.t >= 0 && Date.now() - c.t < CONFIRM_WINDOW ? c.name : null;
+}
+function clearPendingDelete() {
+  $.NSFileManager.defaultManager.removeItemAtPathError(confirmPath(), $());
+}
+
+function layoutKeyword() {
+  return env("keyword_layout", "").trim() || "layout";
+}
+
+function alfredSearch(q) {
+  if (DRY) return dry(`Alfred search "${q}"`);
+  Application("com.runningwithcrayons.Alfred").search(q);
+}
+
+function layoutDeleteAsk(a) {
+  if (!hasLayout(loadLayouts(), a.name)) return `No arrangement named “${clean(String(a.name || ""))}”`;
+  if (!writeJSON(confirmPath(), { name: a.name, t: Date.now() })) return "The workflow’s data folder isn’t writable";
+  alfredSearch(`${layoutKeyword()} `);
+  return undefined;
+}
+
+function layoutDeleteCancel() {
+  clearPendingDelete();
+  alfredSearch(`${layoutKeyword()} `);
+  return undefined;
+}
+
 function layoutDelete(a) {
+  clearPendingDelete();
   const layouts = loadLayouts();
-  if (!(a.name in layouts)) return `No arrangement named “${a.name}”`;
+  if (!hasLayout(layouts, a.name)) return `No arrangement named “${clean(String(a.name || ""))}”`;
   delete layouts[a.name];
   if (!writeJSON(layoutsPath(), layouts)) return `Could not delete “${a.name}”: the workflow’s data folder isn’t writable`;
   return `Deleted “${a.name}”`;
@@ -1526,11 +1574,11 @@ function volumeAction(a) {
 }
 
 function openURL(url) {
-  if (!/^https:\/\//.test(url)) return "";
+  if (!/^https:\/\//.test(url)) return undefined;
   if (DRY) return dry(`open ${url}`);
   ObjC.import("AppKit");
   $.NSWorkspace.sharedWorkspace.openURL($.NSURL.URLWithString(url));
-  return "";
+  return undefined;
 }
 
 function act(json) {
@@ -1558,6 +1606,8 @@ function act(json) {
     case "layout-save": return layoutSave(a);
     case "layout-restore": return layoutRestore(a);
     case "layout-delete": return layoutDelete(a);
+    case "layout-delete-ask": return layoutDeleteAsk(a);
+    case "layout-delete-cancel": return layoutDeleteCancel();
     case "anc": return ancAction(a);
     case "anc-toggle":
       return ancAction({ mode: env("anc_toggle_a", "Noise Cancellation"), other: env("anc_toggle_b", "Transparency"), toggle: true });
@@ -1579,7 +1629,9 @@ function run(argv) {
     } catch (e) {
       msg = `Error: ${e.message || e}`;
     }
-    return [...dryCalls.map((c) => `DRY RUN: ${c}`), msg].filter(Boolean).join("\n");
+    // Nothing to say prints nothing at all (not even a newline), so the Notification object's
+    // "only show if populated" stays silent.
+    return [...dryCalls.map((c) => `DRY RUN: ${c}`), msg].filter(Boolean).join("\n") || undefined;
   }
   const h = HANDLERS[cmd];
   if (!h) return output([info(`Unknown command: ${cmd}`, "", "error")]);
