@@ -876,6 +876,11 @@ esac
         out = act(find(it, "All displays")["arg"], twins, bins=bins)
         self.assertIn("m1ddc display id=2 set luminance 40", out)
         self.assertIn("m1ddc display id=3 set luminance 40", out)
+        # one twin missing from the list: its UUID must not select the other twin
+        only3 = fake_bin("m1ddc", script.replace("[2] DELL U2720Q", "[9] X").replace("Display ID:    2", "Display ID:    99"))
+        it = sf("bright", "", twins, bins=only3)
+        self.assertIn("m1ddc does not list", find(it, "DELL U2720Q (1): brightness not available")["subtitle"])
+        self.assertIn("currently 90%", find(it, "DELL U2720Q (2) → 100%")["subtitle"])
         # a display m1ddc doesn't list is not guessed from the only other entry
         one = fake_bin("m1ddc", "case \"$*\" in \"display list detailed\") printf '[1] LG (%s)\\n - Display ID:    9\\n' X;; *) echo 50;; esac\n")
         self.assertIn("m1ddc does not list", find(sf("bright", "", fixture(displays=[mac(), dell()]), bins=one), "DELL U2720Q: brightness not available")["subtitle"])

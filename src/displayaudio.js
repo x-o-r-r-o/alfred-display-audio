@@ -963,17 +963,22 @@ function brightnessTargets(list) {
       m1list = m1 ? m1ddcDisplays(m1) : [];
     }
     if (m1) {
-      const byId = m1list.find((x) => x.displayId === d.id);
-      const byUuid = byId ? [byId] : m1list.filter((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
-      let t = byUuid.length === 1 ? byUuid[0] : null;
-      let reason = byUuid.length > 1 ? "identical displays share a UUID, so m1ddc can't tell them apart" : "m1ddc does not list this display";
-      if (!t && !byUuid.length) {
-        const byName = m1list.filter((x) => x.name === d.name);
-        if (byName.length === 1) t = byName[0];
-        else if (byName.length > 1) reason = "m1ddc can't tell identical displays apart without their UUIDs";
+      let t = null;
+      let reason = "m1ddc does not list this display";
+      if (m1list.some((x) => x.displayId !== null)) {
+        // m1ddc 1.2+ reports display IDs: an exact match or nothing (a UUID or name could be a twin's)
+        t = m1list.find((x) => x.displayId === d.id) || null;
+      } else {
+        const byUuid = m1list.filter((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
+        if (byUuid.length === 1) t = byUuid[0];
+        else if (byUuid.length > 1) reason = "identical displays share a UUID, so m1ddc can't tell them apart";
+        else {
+          const byName = m1list.filter((x) => x.name === d.name);
+          if (byName.length === 1) t = byName[0];
+          else if (byName.length > 1) reason = "m1ddc can't tell identical displays apart without their UUIDs";
+        }
+        if (!t && m1list.length === 1 && externals.length === 1) t = m1list[0];
       }
-      // a newer m1ddc that reports display IDs and doesn't list this one can't control it
-      if (!t && !m1list.some((x) => x.displayId !== null) && m1list.length === 1 && externals.length === 1) t = m1list[0];
       if (t) {
         const r = spawn(m1, ["display", t.select, "get", "luminance"], 3);
         const v = /^\s*(\d+(?:\.\d+)?)\s*$/.test(r.out) ? parseFloat(r.out) : NaN; // errors go to stdout too
