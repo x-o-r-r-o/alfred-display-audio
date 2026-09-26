@@ -587,6 +587,63 @@ class ActionTests(unittest.TestCase):
         self.assertEqual(data["items"][0]["title"], "Unknown command: nope")
 
 
+class AuditPass1Tests(unittest.TestCase):
+    """Regressions for bugs found in the first audit."""
+
+    def test_volume_on_device_without_volume(self):
+        fx = fixture(audio=audio(output=95, vol={"output": None}))
+        out = act({"op": "volume", "scope": "output", "value": 30}, fx)
+        self.assertEqual(out, "LG HDR 4K has no adjustable volume")
+        fx = fixture(audio=audio(vol={"input": None}))
+        self.assertIn("no adjustable input level", act({"op": "volume", "scope": "input", "value": 30}, fx))
+
+    def test_device_without_uid_uses_id(self):
+        devs = [dev(1, "Odd A", "", "usb", out=2), dev(2, "Odd B", "", "usb", out=2)]
+        fx = fixture(audio=audio(devs, output=1))
+        arg = find(sf("audio", "odd b", fx), "Odd B")["arg"]
+        self.assertIn("device=2", act(arg, fx))
+
+    def test_highest_refresh_keeps_current_and_offers_faster(self):
+        fx = fixture(displays=[mac(cur=BUILTIN_MODES[1])])  # 1728 × 1117 HiDPI at 60 Hz
+        t = titles(sf("res", "1728", fx))
+        self.assertIn("✓ 1728 × 1117 · HiDPI · 60 Hz", t)
+        self.assertIn("1728 × 1117 · HiDPI · 120 Hz", t)
+
+    def test_mirrored_external_brightness(self):
+        bins = fake_bin("m1ddc", M1DDC)
+        fx = fixture(displays=[mac(), dell(x=0, y=0, mirror=1)])
+        self.assertTrue(find(sf("bright", "50", fx, bins=bins), "DELL U2720Q → 50%"))
+
+    def test_typing_a_saved_name_restores_instead_of_replacing(self):
+        d = data_dir("pass1-layout")
+        fx = fixture(displays=[mac(), dell()])
+        act({"op": "layout-save", "name": "Desk"}, fx, data=d)
+        it = sf("layout", "Desk", fx, data=d)
+        self.assertEqual(json.loads(it[0]["arg"])["op"], "layout-restore")
+        self.assertNotIn("Replace “Desk”", titles(it))
+        self.assertEqual(titles(sf("layout", "save Desk", fx, data=d)), ["Replace “Desk”"])
+        it = sf("layout", "De", fx, data=d)
+        self.assertEqual(json.loads(it[0]["arg"])["op"], "layout-restore")
+        self.assertEqual(it[-1]["title"], "Save “De”")
+
+    def test_layout_names_that_are_object_keys(self):
+        d = data_dir("pass1-proto")
+        fx = fixture(displays=[mac()])
+        self.assertEqual(sf("layout", "constructor", fx, data=d)[0]["title"], "Save “constructor”")
+        self.assertEqual(act({"op": "layout-restore", "name": "constructor"}, fx, data=d), "No arrangement named “constructor”")
+        for n in ["__proto__", "constructor", "toString"]:
+            act({"op": "layout-save", "name": n}, fx, data=d)
+        self.assertEqual(sorted(load(os.path.join(d, "layouts.json"))), ["__proto__", "constructor", "toString"])
+        self.assertIn("already the current", act({"op": "layout-restore", "name": "__proto__"}, fx, data=d))
+        self.assertEqual(act({"op": "layout-delete", "name": "__proto__"}, fx, data=d), "Deleted “__proto__”")
+
+    def test_m1ddc_identical_names_without_uuid(self):
+        bins = fake_bin("m1ddc", 'case "$*" in "display list") echo "[1] DELL U2720Q"; echo "[2] DELL U2720Q";; *) echo 50;; esac\n')
+        fx = fixture(displays=[mac(), dell(), dell(id=3, uuid=UUID_DELL2, x=4288)])
+        it = sf("bright", "", fx, bins=bins)
+        self.assertIn("identical displays", find(it, "DELL U2720Q (1): brightness not available")["subtitle"])
+
+
 class RealHardwareTests(unittest.TestCase):
     """Read-only: list the real devices and displays; never runs an action."""
 
@@ -598,6 +655,51 @@ class RealHardwareTests(unittest.TestCase):
                                  capture_output=True, text=True, timeout=60)
             self.assertEqual(out.returncode, 0, out.stderr)
             validate(json.loads(out.stdout))
+
+
+class RealHardwareDryRunTests(unittest.TestCase):
+    """Real devices, DA_DRY_RUN=1. Every action here is also a no-op if the dry-run guard failed:
+    it sets a value to what it already is."""
+
+    def real(self, *args):
+        e = dict(os.environ, alfred_workflow_data=data_dir("real-dry"), DA_BIN_DIRS=EMPTY_BIN, DA_DRY_RUN="1")
+        e.pop("DA_FIXTURE", None)
+        out = subprocess.run(["osascript", "-l", "JavaScript", "./displayaudio.js", *args], cwd=SRC, env=e,
+                             capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return out.stdout
+
+    def test_current_output_device(self):
+        items = json.loads(self.real("audio", ""))["items"]
+        cur = [i for i in items if i["title"].startswith("✓")]
+        if not cur:
+            self.skipTest("no current output device")
+        out = self.real("act", cur[0]["arg"])
+        self.assertTrue(out.startswith("DRY RUN: AudioObjectSetPropertyData(kAudioObjectSystemObject, 'dOut'"), out)
+
+    def test_same_volume(self):
+        items = json.loads(self.real("audio", "0"))["items"]
+        if items[0].get("valid") is False:
+            self.skipTest("output has no volume")
+        import re
+        cur = int(re.search(r"Currently (\d+)%", items[0]["subtitle"]).group(1))
+        out = self.real("act", json.dumps({"op": "volume", "scope": "output", "value": cur}))
+        self.assertTrue(out.startswith(f"DRY RUN: set volume outputVolume {cur}"), out)
+
+    def test_same_brightness(self):
+        items = json.loads(self.real("bright", "+0"))["items"]
+        rows = [i for i in items if i.get("valid", True) is not False]
+        if not rows:
+            self.skipTest("no display with brightness control")
+        out = self.real("act", rows[0]["arg"])
+        self.assertIn("DRY RUN: DisplayServicesSetBrightness(display=", out)
+
+    def test_current_resolution_is_not_reapplied(self):
+        items = json.loads(self.real("res", "current"))["items"]
+        cur = [i for i in items if i["title"].startswith("✓")]
+        if not cur:
+            self.skipTest("no current display mode")
+        self.assertIn("already uses", self.real("act", cur[0]["arg"]))
 
 
 class PlistTests(unittest.TestCase):

@@ -31,7 +31,7 @@ function dry(call) {
 // ---------- small helpers ----------
 
 function fold(s) {
-  return String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
 // Every word of the query must appear somewhere in the haystack (accent- and case-insensitive).
@@ -532,7 +532,7 @@ function deviceRows(scope, query) {
     const kind = transportLabel(d.transport);
     const parts = [kind, isCur ? `Current ${scope}` : `↩ Set as ${scope}`];
     if (scope === "output" && d.id === defs.system) parts.push("Alerts play here");
-    const arg = action("device", { scope, uid: d.uid, name: d.name });
+    const arg = action("device", { scope, uid: d.uid, id: d.id, name: d.name });
     const row = {
       title: `${isCur ? "✓ " : ""}${label(d)}`,
       subtitle: parts.filter(Boolean).join(" · "),
@@ -544,7 +544,7 @@ function deviceRows(scope, query) {
       row.mods = {
         cmd: d.canSys === false
           ? { arg, valid: false, subtitle: "This device can't play alerts and sound effects" }
-          : { arg: action("device", { scope, uid: d.uid, name: d.name, system: true }), subtitle: "Set as output and for alerts and sound effects" },
+          : { arg: action("device", { scope, uid: d.uid, id: d.id, name: d.name, system: true }), subtitle: "Set as output and for alerts and sound effects" },
       };
     else row.mods = { cmd: { arg, subtitle: `Set as ${scope}` } };
     return row;
@@ -749,13 +749,13 @@ function visibleModes(d) {
     );
   }
   if (!allHz) {
+    // the highest refresh rate of each size, plus the current mode
     const best = {};
     for (const m of modes) {
       const k = `${m.w}x${m.h}/${m.pw}x${m.ph}`;
-      const b = best[k];
-      if (!b || sameMode(m, cur) || (!sameMode(b, cur) && (m.hz || 0) > (b.hz || 0))) best[k] = m;
+      if (!best[k] || (m.hz || 0) > (best[k].hz || 0)) best[k] = m;
     }
-    modes = modes.filter((m) => best[`${m.w}x${m.h}/${m.pw}x${m.ph}`] === m);
+    modes = modes.filter((m) => best[`${m.w}x${m.h}/${m.pw}x${m.ph}`] === m || sameMode(m, cur));
   }
   return modes.sort((a, b) => b.w - a.w || b.h - a.h || b.pw - a.pw || (b.hz || 0) - (a.hz || 0));
 }
@@ -863,9 +863,11 @@ function brightnessTargets(list) {
     }
     if (m1) {
       let t = m1list.find((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
+      let reason = "m1ddc does not list this display";
       if (!t) {
         const byName = m1list.filter((x) => x.name === d.name);
         if (byName.length === 1) t = byName[0];
+        else if (byName.length > 1) reason = "m1ddc can't tell identical displays apart without their UUIDs";
       }
       if (!t && m1list.length === 1 && externals.length === 1) t = m1list[0];
       if (t) {
@@ -873,7 +875,7 @@ function brightnessTargets(list) {
         const v = parseFloat(r.out);
         return { d, via: "m1ddc", bin: m1, index: t.index, value: r.status === 0 && isFinite(v) ? v : null };
       }
-      return { d, via: null, reason: "m1ddc does not list this display" };
+      return { d, via: null, reason };
     }
     return { d, via: null, reason: bd === "not-running" ? "open-betterdisplay" : "install" };
   });
@@ -900,7 +902,7 @@ function brightItems(query) {
     level = parseLevel(q);
     if (level === null || level > 100) return [info("Type a brightness from 0 to 100", "Or +10 / -10 to adjust", "error")];
   }
-  const targets = brightnessTargets(list.filter((d) => !d.mirrorOf || d.builtin));
+  const targets = brightnessTargets(list); // a mirrored display still has its own backlight
   const ok = targets.filter((t) => t.via);
   const items = [];
   const status = (t) =>
@@ -1004,9 +1006,13 @@ function layoutsPath() {
   return `${dataDir()}/layouts.json`;
 }
 
+// A prototype-less object, so names like "constructor" or "__proto__" are ordinary keys.
 function loadLayouts() {
   const l = readJSON(layoutsPath(), {});
-  return l && typeof l === "object" && !Array.isArray(l) ? l : {};
+  const out = Object.create(null);
+  if (l && typeof l === "object" && !Array.isArray(l))
+    for (const k of Object.keys(l)) if (l[k] && typeof l[k] === "object") out[k] = l[k];
+  return out;
 }
 
 function snapshot(list) {
@@ -1066,18 +1072,18 @@ function layoutItems(query) {
   const items = [];
   const save = /^save\b\s*(.*)$/i.exec(q);
   const name = (save ? save[1] : q).trim();
-  if (save || q) {
-    if (name) {
-      const exists = Object.prototype.hasOwnProperty.call(layouts, name);
-      items.push({
-        title: `${exists ? "Replace" : "Save"} “${name}”`,
-        subtitle: `Save the current arrangement (${list.length} display${list.length === 1 ? "" : "s"}, ${engine})`,
-        arg: action("layout-save", { name }),
-        icon: icon("save"),
-      });
-    } else items.push(info("Type a name for this arrangement", "e.g. save Desk", "save"));
-    if (save) return items;
-  }
+  const saveRow = () =>
+    name
+      ? {
+          title: `${name in layouts ? "Replace" : "Save"} “${name}”`,
+          subtitle: `Save the current arrangement (${list.length} display${list.length === 1 ? "" : "s"}, ${engine})`,
+          arg: action("layout-save", { name }),
+          icon: icon("save"),
+        }
+      : info("Type a name for this arrangement", "e.g. save Desk", "save");
+  // "save <name>" only saves; any other text filters the saved arrangements first, so ↩ on a
+  // typed name restores it rather than overwriting it.
+  if (save) return [saveRow()];
   if (!list.length) items.unshift(info("No displays found", "Wake the display or check the cable", "error"));
   const names = Object.keys(layouts).filter((n) => !q || matches(q, n)).sort((a, b) => a.localeCompare(b));
   const saved = names.map((n) => {
@@ -1098,6 +1104,7 @@ function layoutItems(query) {
   if (!q)
     items.push(info("Current arrangement", describeArrangement(snap) || "No displays", "layout", { autocomplete: "save " }));
   items.push(...saved);
+  if (q && !(name in layouts)) items.push(saveRow());
   if (!q && !names.length) items.push(info("No saved arrangements yet", "Type “save” and a name to save this one", "info", { autocomplete: "save " }));
   return items;
 }
@@ -1161,7 +1168,7 @@ function layoutRestore(a) {
 
 function layoutDelete(a) {
   const layouts = loadLayouts();
-  if (!Object.prototype.hasOwnProperty.call(layouts, a.name)) return `No arrangement named “${a.name}”`;
+  if (!(a.name in layouts)) return `No arrangement named “${a.name}”`;
   delete layouts[a.name];
   writeJSON(layoutsPath(), layouts);
   return `Deleted “${a.name}”`;
@@ -1249,7 +1256,8 @@ function ancAction(a) {
 
 function deviceAction(a) {
   const scope = a.scope === "input" ? "input" : "output";
-  const dev = usableDevices(scope).find((d) => d.uid === a.uid);
+  // UIDs survive reconnects and sleep; device IDs don't. Fall back to the ID only without a UID.
+  const dev = usableDevices(scope).find((d) => (a.uid ? d.uid === a.uid : d.id === a.id));
   if (!dev) return `${a.name || "That device"} is no longer connected`;
   setDefaultDevice(scope, dev);
   if (a.system && scope === "output") {
@@ -1264,6 +1272,8 @@ function volumeAction(a) {
   const scope = a.scope === "input" ? "input" : "output";
   const v = Math.max(0, Math.min(100, Math.round(Number(a.value))));
   if (!isFinite(v)) return "Invalid volume";
+  if ((scope === "input" ? HW.volume().input : HW.volume().output) === null)
+    return `${currentDeviceName(scope) || `No ${scope} device`} has no adjustable ${scope === "input" ? "input level" : "volume"}`;
   if (scope === "input") {
     if (v > 0) {
       const { path, state } = micState();
