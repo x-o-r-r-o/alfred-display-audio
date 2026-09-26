@@ -89,6 +89,16 @@
 				<key>vitoclose</key>
 				<false/>
 			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>262144</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
 		</array>
 		<key>805D9EBE-5E4B-5206-BED2-31371F63E2D0</key>
 		<array>
@@ -130,6 +140,16 @@
 				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
 				<key>modifiers</key>
 				<integer>524288</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+			<dict>
+				<key>destinationuid</key>
+				<string>F3722CC4-BBBA-5928-B8CC-AAA6D5AAB1A8</string>
+				<key>modifiers</key>
+				<integer>262144</integer>
 				<key>modifiersubtext</key>
 				<string></string>
 				<key>vitoclose</key>
@@ -679,11 +699,13 @@ Switch the sound output via the `audio` keyword. The current device is marked wi
 * &lt;kbd&gt;↩&lt;/kbd&gt; Set as the output.
 * &lt;kbd&gt;⌘&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Set as the output and for alerts and sound effects.
 * &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Set as the output and input, for headsets and AirPods with a microphone.
+* &lt;kbd&gt;⌃&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Hide the device from the list. Type `hidden` to see hidden devices, and &lt;kbd&gt;⌃&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; to show one again.
 
 Type `in` after the keyword to list input devices instead, like `audio in`, or `audio in 70` / `audio in +10` to set the input level.
 
 * &lt;kbd&gt;↩&lt;/kbd&gt; Set as the input.
 * &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Set as the input and output.
+* &lt;kbd&gt;⌃&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Hide the device from the list (`audio in hidden` lists them).
 
 ### Microphone
 
@@ -706,7 +728,7 @@ Built-in and Apple displays work out of the box. Other external displays need [B
 Save the current display arrangement via the `layout` keyword followed by `save` and a name, like `layout save Desk`. It remembers where each display sits, its resolution and mirroring. Type the keyword alone to see saved arrangements, with ✓ on the one in use.
 
 * &lt;kbd&gt;↩&lt;/kbd&gt; Restore the arrangement.
-* &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Delete it.
+* &lt;kbd&gt;⌥&lt;/kbd&gt;&lt;kbd&gt;↩&lt;/kbd&gt; Delete it, after a confirmation.
 
 When [displayplacer](https://github.com/jakehilborn/displayplacer) is installed, arrangements are also saved and restored with it, which adds rotation and colour depth.
 

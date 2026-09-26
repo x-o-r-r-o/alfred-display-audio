@@ -332,6 +332,16 @@
       "mod": "alt"
     },
     {
+      "from": "sf_audio",
+      "to": "act",
+      "mod": "ctrl"
+    },
+    {
+      "from": "sf_mic",
+      "to": "act",
+      "mod": "ctrl"
+    },
+    {
       "from": "hk_mic",
       "to": "mic_toggle"
     },

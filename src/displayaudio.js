@@ -601,18 +601,43 @@ function partnerDevice(dev, scope) {
   return named.length === 1 ? named[0] : null;
 }
 
-function deviceRows(scope, query) {
+// ---------- hidden devices (⌃↩) ----------
+
+function hiddenPath() {
+  return `${dataDir()}/hidden.json`;
+}
+function hiddenKey(d) {
+  return d.uid || `name:${d.name}`;
+}
+function hiddenSet() {
+  const list = readObject(hiddenPath()).devices;
+  return new Set(Array.isArray(list) ? list.filter((x) => typeof x === "string") : []);
+}
+
+// The query that reopens this list after hiding or showing a device.
+function reopenQuery(origin, scope) {
+  const kw = (name) => env(`keyword_${name}`, "").trim() || name;
+  return origin === "mic" ? `${kw("mic")} ` : `${kw("audio")} ${scope === "input" ? "in " : ""}`;
+}
+
+// opts.hidden: list only the hidden devices (the "hidden" query); opts.origin: "audio" or "mic"
+function deviceRows(scope, query, opts = {}) {
   const all = usableDevices(scope);
   const defs = HW.audioDefaults();
   const current = scope === "output" ? defs.output : defs.input;
+  const hidden = hiddenSet();
   const label = disambiguate(all, (d) => d.name, (d) => transportLabel(d.transport));
+  const reopen = reopenQuery(opts.origin, scope);
   const list = all
+    // the current device always shows, hidden or not, so ✓ is never missing
+    .filter((d) => (opts.hidden ? hidden.has(hiddenKey(d)) : !hidden.has(hiddenKey(d)) || d.id === current))
     .filter((d) => matches(query, label(d), transportLabel(d.transport), scope === "output" ? "output" : "input"))
     .sort((a, b) => (b.id === current) - (a.id === current) || label(a).localeCompare(label(b)));
   return list.map((d) => {
     const isCur = d.id === current;
     const kind = transportLabel(d.transport);
-    const parts = [kind, isCur ? `Current ${scope}` : `↩ Set as ${scope}`];
+    const isHidden = hidden.has(hiddenKey(d));
+    const parts = [kind, isCur ? `Current ${scope}` : `↩ Set as ${scope}`, isHidden ? "Hidden" : ""];
     if (scope === "output" && d.id === defs.system) parts.push("Alerts play here");
     const arg = action("device", { scope, uid: d.uid, id: d.id, name: d.name });
     const row = {
@@ -633,6 +658,10 @@ function deviceRows(scope, query) {
     row.mods.alt = partnerDevice(d, scope)
       ? { arg: action("device", { scope, uid: d.uid, id: d.id, name: d.name, both: true }), subtitle: scope === "output" ? "Set as output and input (its microphone too)" : "Set as input and output (its speakers too)" }
       : { arg, valid: false, subtitle: scope === "output" ? "This device has no microphone of its own" : "This device has no speakers of its own" };
+    row.mods.ctrl = {
+      arg: action("device-hide", { key: hiddenKey(d), name: d.name, hide: !isHidden, reopen }),
+      subtitle: isHidden ? "Show in the list again" : `Hide from the list (see them with “${scope === "input" && opts.origin !== "mic" ? "in " : ""}hidden”)`,
+    };
     return row;
   });
 }
@@ -704,13 +733,18 @@ function audioItems(query) {
       icon: icon(mute ? "muted" : "volume"),
     }];
   }
+  const hiddenView = /^hidden\b\s*([\s\S]*)$/i.exec(q);
   let rows;
   try {
-    rows = deviceRows(scope, q);
+    rows = deviceRows(scope, hiddenView ? hiddenView[1] : q, { hidden: !!hiddenView, origin: "audio" });
   } catch (e) {
     return [info("Could not read audio devices", String(e.message || e), "error")];
   }
   items.push(...rows);
+  if (hiddenView) {
+    if (!rows.length) items.push(info(`No hidden ${scope} devices`, "Hide a device with ⌃↩ in the list", "info"));
+    return items;
+  }
   if (!rows.length)
     items.push(info(q ? `No ${scope} device matches “${q}”` : `No ${scope} devices found`, q ? "Check the spelling or connect the device" : "Connect a device or check System Settings › Sound", "info"));
   if (!q) {
@@ -726,8 +760,35 @@ function audioItems(query) {
       scope === "output" ? "mic" : "speaker",
       { valid: false, autocomplete: scope === "output" ? "in " : "" }
     ));
+    const nHidden = hiddenCount(scope);
+    if (nHidden)
+      items.push(info(`${nHidden} hidden ${scope} device${nHidden === 1 ? "" : "s"}…`, "⌃↩ on a device hides it or shows it again", "info", {
+        autocomplete: scope === "output" ? "hidden " : "in hidden ",
+      }));
   }
   return items;
+}
+
+// connected devices of this scope that are hidden (and not the current one)
+function hiddenCount(scope) {
+  const hidden = hiddenSet();
+  if (!hidden.size) return 0;
+  const defs = HW.audioDefaults();
+  const current = scope === "output" ? defs.output : defs.input;
+  return usableDevices(scope).filter((d) => hidden.has(hiddenKey(d)) && d.id !== current).length;
+}
+
+function deviceHide(a) {
+  if (typeof a.key !== "string" || !a.key) return "Invalid action";
+  const hidden = hiddenSet();
+  if (a.hide === false) hidden.delete(a.key);
+  else hidden.add(a.key);
+  if (!writeJSON(hiddenPath(), { devices: [...hidden].sort() })) return "The workflow’s data folder isn’t writable";
+  if (typeof a.reopen === "string" && a.reopen.trim()) {
+    alfredSearch(a.reopen);
+    return undefined;
+  }
+  return `${a.hide === false ? "Showing" : "Hidden"}: ${clean(a.name || "")}`;
 }
 
 // ======================================================================
@@ -773,7 +834,12 @@ function micItems(query) {
   }
   let rows = [];
   try {
-    rows = deviceRows("input", /^(mute|unmute|toggle)$/i.test(q) ? "" : q);
+    const hv = /^hidden\b\s*([\s\S]*)$/i.exec(q);
+    if (hv) {
+      rows = deviceRows("input", hv[1], { hidden: true, origin: "mic" });
+      return rows.length ? rows : [info("No hidden input devices", "Hide a device with ⌃↩ in the list", "info")];
+    }
+    rows = deviceRows("input", /^(mute|unmute|toggle)$/i.test(q) ? "" : q, { origin: "mic" });
   } catch (e) {
     items.push(info("Could not read audio devices", String(e.message || e), "error"));
   }
@@ -1598,6 +1664,7 @@ function act(json) {
   if ("targets" in a && !Array.isArray(a.targets)) return "Invalid action";
   switch (a.op) {
     case "device": return deviceAction(a);
+    case "device-hide": return deviceHide(a);
     case "volume": return volumeAction(a);
     case "mute":
       setVolume({ outputMuted: !!a.value });

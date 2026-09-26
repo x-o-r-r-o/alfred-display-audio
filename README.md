@@ -15,6 +15,7 @@ Switch the sound output via the `audio` keyword. The current device is marked wi
 * <kbd>↩</kbd> Set as the output.
 * <kbd>⌘</kbd><kbd>↩</kbd> Set as the output and for alerts and sound effects.
 * <kbd>⌥</kbd><kbd>↩</kbd> Set as the output and input, for headsets and AirPods with a microphone.
+* <kbd>⌃</kbd><kbd>↩</kbd> Hide the device from the list. Type `hidden` to see hidden devices, and <kbd>⌃</kbd><kbd>↩</kbd> to show one again.
 
 Type `in` after the keyword to list input devices instead, like `audio in`, or `audio in 70` / `audio in +10` to set the input level.
 
@@ -22,6 +23,7 @@ Type `in` after the keyword to list input devices instead, like `audio in`, or `
 
 * <kbd>↩</kbd> Set as the input.
 * <kbd>⌥</kbd><kbd>↩</kbd> Set as the input and output.
+* <kbd>⌃</kbd><kbd>↩</kbd> Hide the device from the list (`audio in hidden` lists them).
 
 ### Microphone
 
@@ -52,7 +54,7 @@ Save the current display arrangement via the `layout` keyword followed by `save`
 ![Saved display arrangements](images/layout.png)
 
 * <kbd>↩</kbd> Restore the arrangement.
-* <kbd>⌥</kbd><kbd>↩</kbd> Delete it.
+* <kbd>⌥</kbd><kbd>↩</kbd> Delete it, after a confirmation.
 
 When [displayplacer](https://github.com/jakehilborn/displayplacer) is installed, arrangements are also saved and restored with it, which adds rotation and colour depth.
 

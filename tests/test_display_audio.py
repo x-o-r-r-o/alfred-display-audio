@@ -1132,6 +1132,45 @@ class Round4Tests(unittest.TestCase):
         self.assertEqual(out.stdout, b"")
         self.assertEqual(out.returncode, 0)
 
+    def test_hide_devices(self):
+        d = data_dir("round4-hide")
+        teams = find(sf("audio", "blackhole", data=d), "BlackHole 2ch")
+        self.assertIn("Hide from the list", teams["mods"]["ctrl"]["subtitle"])
+        # ⌃↩ hides it and reopens the same list (keyword from the configuration)
+        custom = find(sf("audio", "blackhole", data=d, keyword_audio=" snd "), "BlackHole 2ch")
+        self.assertEqual(json.loads(custom["mods"]["ctrl"]["arg"])["reopen"], "snd ")
+        self.assertEqual(act(teams["mods"]["ctrl"]["arg"], data=d), 'DRY RUN: Alfred search "audio "')
+        self.assertEqual(load(os.path.join(d, "hidden.json")), {"devices": ["BlackHole2ch_UID"]})
+        it = sf("audio", "", data=d)
+        self.assertNotIn("BlackHole 2ch", titles(it))
+        more = find(it, "1 hidden output device")
+        self.assertEqual(more["autocomplete"], "hidden ")
+        # it stays in the input list until hidden there too (same device, same key): hidden everywhere
+        self.assertNotIn("BlackHole 2ch", titles(sf("audio", "in", data=d)))
+        self.assertNotIn("BlackHole 2ch", titles(sf("mic", "", data=d)))
+        # the hidden view lists it with ⌃↩ to show it again
+        hv = sf("audio", "hidden", data=d)
+        self.assertEqual(titles(hv), ["BlackHole 2ch"])
+        self.assertIn("Hidden", hv[0]["subtitle"])
+        self.assertEqual(hv[0]["mods"]["ctrl"]["subtitle"], "Show in the list again")
+        act(hv[0]["mods"]["ctrl"]["arg"], data=d)
+        self.assertIn("BlackHole 2ch", titles(sf("audio", "", data=d)))
+        self.assertEqual(titles(sf("audio", "hidden", data=d)), ["No hidden output devices"])
+        self.assertEqual(titles(sf("mic", "hidden", data=d)), ["No hidden input devices"])
+        # the current device is never hidden from view
+        spk = find(sf("audio", "", data=d), "✓ MacBook Pro Speakers")
+        act(spk["mods"]["ctrl"]["arg"], data=d)
+        it = sf("audio", "", data=d)
+        self.assertTrue(find(it, "✓ MacBook Pro Speakers"))
+        self.assertFalse([t for t in titles(it) if "hidden output" in t])
+        # mic rows reopen the mic keyword; a corrupt file counts as nothing hidden
+        mic_row = find(sf("mic", "", data=d), "✓ MacBook Pro Microphone")
+        self.assertEqual(json.loads(mic_row["mods"]["ctrl"]["arg"])["reopen"], "mic ")
+        with open(os.path.join(d, "hidden.json"), "w") as f:
+            f.write('{"devices": "x"}')
+        self.assertIn("BlackHole 2ch", titles(sf("audio", "", data=d)))
+        self.assertEqual(act({"op": "device-hide", "key": 5}, data=d), "Invalid action")
+
     def test_betterdisplay_not_running(self):
         bins = fake_bin("betterdisplaycli", 'exit 1\n')
         it = sf("bright", "", fixture(displays=[mac(), dell()]), bins=bins, DA_BD_RUNNING="0")
