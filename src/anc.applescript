@@ -11,8 +11,9 @@
 -- To stay independent of the system language it never matches localised text:
 --   * the Sound menu extra is found by its AXIdentifier "com.apple.menuextra.sound",
 --     or through Control Center's "controlcenter-volume" tile when Sound isn't in the menu bar;
---   * the Listening Mode rows are found by structure: the first run of 3-4 checkboxes that follows
---     a heading of the selected output device. English labels are only used to confirm the order.
+--   * the Listening Mode rows are found by structure: below the selected output device's row, the
+--     first run of 3-4 checkboxes after a heading. English labels, when present, confirm the run
+--     (and rule out Spatial Audio's Off / Fixed / Head Tracked) and name the modes.
 -- All data arrives as argv, never interpolated into code.
 
 property englishModes : {"Off", "Transparency", "Adaptive", "Noise Cancellation"}
@@ -41,12 +42,12 @@ on run argv
 		return "error:no-popover"
 	end if
 
-	set rows to my listeningRows(sa, deviceName)
+	set {rows, modeNames} to my listeningRows(sa, deviceName, threeLayout)
 	if (count of rows) < 2 then
 		-- the selected device may be collapsed: expand it and look again
 		if my expandDevice(sa, deviceName) then
 			delay 0.4
-			set rows to my listeningRows(sa, deviceName)
+			set {rows, modeNames} to my listeningRows(sa, deviceName, threeLayout)
 		end if
 	end if
 	if (count of rows) < 2 then
@@ -54,7 +55,6 @@ on run argv
 		return "error:no-modes"
 	end if
 
-	set modeNames to my namesFor(rows, deviceName, threeLayout)
 	set previous to ""
 	repeat with i from 1 to count of rows
 		if my isOn(item i of rows) then set previous to item i of modeNames
@@ -255,59 +255,109 @@ on labelOf(el)
 	return ""
 end labelOf
 
--- Checkboxes of the Listening Mode section, in on-screen order.
-on listeningRows(sa, deviceName)
-	tell application "System Events"
-		set els to UI elements of sa
-		set n to count of els
-		repeat with i from 1 to n
-			set el to item i of els
-			set r to ""
-			try
-				set r to role of el
-			end try
-			if r is "AXHeading" and my identifierOf(el) is not "" then
-				set seq to {}
-				repeat with j from (i + 1) to n
-					set c to item j of els
-					set cr to ""
-					try
-						set cr to role of c
-					end try
-					if cr is "AXCheckBox" then
-						set end of seq to c
-					else
-						exit repeat
-					end if
-				end repeat
-				if (count of seq) is greater than or equal to 3 and (count of seq) is less than or equal to 4 then return seq
-			end if
-		end repeat
-		-- fallback: checkboxes carrying English mode names
-		set found to {}
-		repeat with el in els
-			try
-				if (role of el) is "AXCheckBox" and englishModes contains my labelOf(el) then set end of found to contents of el
-			end try
-		end repeat
-		return found
-	end tell
-end listeningRows
+-- Snapshot of the rows of the Sound menu as plain records, so the logic below is testable.
+-- (Built outside any tell block: record labels must not become System Events terms.)
+on describeRows(els)
+	set infos to {}
+	repeat with el in els
+		set e to contents of el
+		set end of infos to {kind:my roleOf(e), ident:my identifierOf(e), lbl:my labelOf(e), checked:my isOn(e)}
+	end repeat
+	return infos
+end describeRows
 
--- The mode name of each row: from English labels when present, else from the row count.
-on namesFor(rows, deviceName, threeLayout)
-	set names to {}
-	set allEnglish to true
-	repeat with r in rows
-		set l to my labelOf(r)
-		if englishModes contains l then
-			set end of names to l
-		else
-			set allEnglish to false
+on roleOf(el)
+	tell application "System Events"
+		try
+			return role of el
+		on error
+			return ""
+		end try
+	end tell
+end roleOf
+
+on deviceNameOf(ident)
+	if ident starts with "sound-device-" and (length of ident) > 13 then return text 14 thru -1 of ident
+	return ""
+end deviceNameOf
+
+-- "modes" when the labels are English listening modes, "other" when they belong to another section
+-- (Spatial Audio's Off / Fixed / Head Tracked, or output devices), "unknown" otherwise (other languages).
+on runVerdict(infos)
+	set known to 0
+	set anchors to 0
+	repeat with c in infos
+		set l to lbl of c
+		set dn to my deviceNameOf(ident of c)
+		if l is in {"Fixed", "Head Tracked", "Head-Tracked"} then return "other"
+		if dn is not "" and l starts with dn then return "other"
+		if englishModes contains l then set known to known + 1
+		if l is in {"Transparency", "Noise Cancellation", "Adaptive"} then set anchors to anchors + 1
+	end repeat
+	if known is (count of infos) and anchors > 0 then return "modes"
+	if known > 0 then return "other"
+	return "unknown"
+end runVerdict
+
+-- Indexes of the Listening Mode checkboxes among the rows, in on-screen order.
+on pickRows(infos, deviceName)
+	set n to count of infos
+	-- the selected output device's row: its settings are listed below it
+	set devIdx to 0
+	repeat with i from 1 to n
+		set el to item i of infos
+		set dn to my deviceNameOf(ident of el)
+		if dn is not "" and (deviceName is "" or dn is deviceName) and kind of el is "AXCheckBox" and checked of el and lbl of el starts with dn then
+			set devIdx to i
+			exit repeat
 		end if
 	end repeat
-	if allEnglish then return names
-	set n to count of rows
+	-- the first run of 3-4 checkboxes after a heading that carries an identifier
+	repeat with i from (devIdx + 1) to n
+		set el to item i of infos
+		if kind of el is "AXHeading" and ident of el is not "" then
+			set seq to {}
+			set idx to {}
+			repeat with j from (i + 1) to n
+				if kind of (item j of infos) is "AXCheckBox" then
+					set end of seq to item j of infos
+					set end of idx to j
+				else
+					exit repeat
+				end if
+			end repeat
+			if (count of seq) is greater than or equal to 3 and (count of seq) is less than or equal to 4 then
+				set verdict to my runVerdict(seq)
+				if verdict is "modes" then return idx
+				-- in other languages trust structure only below the selected device's row
+				if verdict is "unknown" and devIdx > 0 then return idx
+			end if
+		end if
+	end repeat
+	-- fallback: checkboxes with English mode names; "Off" only right before "Transparency"
+	-- (Spatial Audio has an "Off" too)
+	set found to {}
+	repeat with i from 1 to n
+		set el to item i of infos
+		if kind of el is "AXCheckBox" then
+			if lbl of el is in {"Transparency", "Adaptive", "Noise Cancellation"} then
+				set end of found to i
+			else if lbl of el is "Off" and i < n then
+				if lbl of (item (i + 1) of infos) is "Transparency" then set end of found to i
+			end if
+		end if
+	end repeat
+	return found
+end pickRows
+
+-- The mode name of each row: from English labels when present, else from the row count.
+on namesFor(labels, deviceName, threeLayout)
+	set allEnglish to true
+	repeat with l in labels
+		if not (englishModes contains (contents of l)) then set allEnglish to false
+	end repeat
+	if allEnglish then return labels
+	set n to count of labels
 	if n is 4 then return {"Off", "Transparency", "Adaptive", "Noise Cancellation"}
 	if n is 3 then
 		if threeLayout is "off" or (threeLayout is "auto" and deviceName contains "Max") then return {"Off", "Transparency", "Noise Cancellation"}
@@ -315,6 +365,19 @@ on namesFor(rows, deviceName, threeLayout)
 	end if
 	return {"Transparency", "Noise Cancellation"}
 end namesFor
+
+-- The Listening Mode checkboxes (UI elements) and their mode names.
+on listeningRows(sa, deviceName, threeLayout)
+	tell application "System Events" to set els to UI elements of sa
+	set infos to my describeRows(els)
+	set rows to {}
+	set labels to {}
+	repeat with i in my pickRows(infos, deviceName)
+		set end of rows to item i of els
+		set end of labels to lbl of (item i of infos)
+	end repeat
+	return {rows, my namesFor(labels, deviceName, threeLayout)}
+end listeningRows
 
 -- Click the disclosure triangle of the selected output device if it is collapsed.
 on expandDevice(sa, deviceName)

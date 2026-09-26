@@ -705,8 +705,23 @@ function displays() {
     .sort((a, b) => b.main - a.main || a.x - b.x || a.y - b.y || a.id - b.id);
 }
 
-function findDisplay(list, uuid, id) {
-  return (uuid && list.find((d) => d.uuid && d.uuid.toUpperCase() === String(uuid).toUpperCase())) || (!uuid ? list.find((d) => d.id === id) : null) || null;
+// Find a display by UUID (stable across reconnects), or by ID when it has none. Identical monitors
+// without a serial number share a UUID: then the display ID decides. `used` makes matches one-to-one.
+function findDisplay(list, uuid, id, used = new Set()) {
+  const free = list.filter((d) => !used.has(d));
+  if (!uuid) return free.find((d) => d.id === id) || null;
+  const same = free.filter((d) => d.uuid && d.uuid.toUpperCase() === String(uuid).toUpperCase());
+  return same.find((d) => d.id === id) || same[0] || null;
+}
+
+// Pair saved displays with connected ones, one to one.
+function matchSaved(saved, list) {
+  const used = new Set();
+  return (saved || []).map((s) => {
+    const d = findDisplay(list, s.uuid, s.id, used);
+    if (d) used.add(d);
+    return [s, d];
+  });
 }
 
 function sameMode(a, b) {
@@ -862,9 +877,10 @@ function brightnessTargets(list) {
       m1list = m1 ? m1ddcDisplays(m1) : [];
     }
     if (m1) {
-      let t = m1list.find((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
-      let reason = "m1ddc does not list this display";
-      if (!t) {
+      const byUuid = m1list.filter((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
+      let t = byUuid.length === 1 ? byUuid[0] : null;
+      let reason = byUuid.length > 1 ? "identical displays share a UUID, so m1ddc can't tell them apart" : "m1ddc does not list this display";
+      if (!t && !byUuid.length) {
         const byName = m1list.filter((x) => x.name === d.name);
         if (byName.length === 1) t = byName[0];
         else if (byName.length > 1) reason = "m1ddc can't tell identical displays apart without their UUIDs";
@@ -1020,11 +1036,13 @@ function snapshot(list) {
   for (const d of list) byId[d.id] = d;
   return list.map((d) => ({
     uuid: d.uuid,
+    id: d.id,
     name: d.label,
     builtin: d.builtin,
     x: d.x,
     y: d.y,
     mirrorOf: d.mirrorOf && byId[d.mirrorOf] ? byId[d.mirrorOf].uuid : null,
+    mirrorOfId: d.mirrorOf || null,
     mode: d.current ? { w: d.current.w, h: d.current.h, pw: d.current.pw, ph: d.current.ph, hz: d.current.hz, io: d.current.io } : null,
   }));
 }
@@ -1037,14 +1055,13 @@ function describeArrangement(snap) {
 
 function sameArrangement(saved, now) {
   if (!saved || saved.length !== now.length) return false;
-  return saved.every((s) => {
-    const n = now.find((x) => x.uuid && x.uuid === s.uuid);
-    return n && n.x === s.x && n.y === s.y && (n.mirrorOf || null) === (s.mirrorOf || null) && sameMode(n.mode, s.mode);
-  });
+  return matchSaved(saved, now).every(
+    ([s, n]) => n && n.x === s.x && n.y === s.y && (n.mirrorOf || null) === (s.mirrorOf || null) && sameMode(n.mode, s.mode)
+  );
 }
 
 function missingDisplays(saved, list) {
-  return (saved || []).filter((s) => !findDisplay(list, s.uuid, null)).map((s) => s.name);
+  return matchSaved(saved, list).filter(([, d]) => !d).map(([s]) => s.name);
 }
 
 function displayplacerArgs(out) {
@@ -1145,11 +1162,10 @@ function layoutRestore(a) {
     return `Restored “${a.name}” with displayplacer`;
   }
   const ops = [];
-  for (const s of l.displays || []) {
-    const d = findDisplay(list, s.uuid, null);
+  for (const [s, d] of matchSaved(l.displays, list)) {
     if (!d) continue;
     if (s.mirrorOf) {
-      const master = findDisplay(list, s.mirrorOf, null);
+      const master = findDisplay(list, s.mirrorOf, s.mirrorOfId);
       if (master && d.mirrorOf !== master.id) ops.push({ kind: "mirror", id: d.id, master: master.id });
       continue;
     }
@@ -1237,7 +1253,7 @@ function ancAction(a) {
   if (DRY) {
     dry(["/usr/bin/osascript", "anc.applescript", ...argv].map(shellQuote).join(" "));
     res = { status: 0, out: `ok:${modes[0]}:${modes[0]}` };
-  } else res = spawn("/usr/bin/osascript", [script, ...argv], 15);
+  } else res = spawn("/usr/bin/osascript", [script, ...argv], 25);
   const text = (res.out || "").trim();
   const m = /^ok:([^:]*):(.*)$/.exec(text);
   if (m) {

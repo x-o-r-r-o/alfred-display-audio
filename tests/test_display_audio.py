@@ -576,6 +576,103 @@ class ANCTests(unittest.TestCase):
 
 # ---------- misc ----------
 
+HARNESS = """
+on run argv
+	set s to load script POSIX file (item 1 of argv)
+	set dev to item 2 of argv
+	set layout3 to item 3 of argv
+	set infos to {}
+	set AppleScript's text item delimiters to tab
+	repeat with i from 4 to count of argv
+		set f to text items of (item i of argv)
+		set end of infos to {kind:item 1 of f, ident:item 2 of f, lbl:item 3 of f, checked:(item 4 of f is "1")}
+	end repeat
+	set idx to s's pickRows(infos, dev)
+	set labels to {}
+	repeat with i in idx
+		set end of labels to lbl of item i of infos
+	end repeat
+	set names to s's namesFor(labels, dev, layout3)
+	set AppleScript's text item delimiters to ","
+	return (idx as text) & "|" & (names as text)
+end run
+"""
+
+
+def sound_menu(device="AirPods Pro", modes=("Transparency", "Adaptive", "Noise Cancellation"), checked=2,
+               spatial=("Off", "Fixed", "Head Tracked"), selected=True, output_heading_id=""):
+    """Rows of the Sound menu as (role, identifier, label, on)."""
+    dev_id = "sound-device-" + device
+    rows = [("AXHeading", output_heading_id, "Output", 0),
+            ("AXCheckBox", "sound-device-MacBook Pro Speakers", "MacBook Pro Speakers", 0 if selected else 1),
+            ("AXCheckBox", dev_id, device + ", 80%", 1 if selected else 0),
+            ("AXDisclosureTriangle", dev_id, "", 1)]
+    if modes:
+        rows.append(("AXHeading", dev_id, "Listening Mode", 0))
+        rows += [("AXCheckBox", dev_id, m, 1 if i == checked else 0) for i, m in enumerate(modes)]
+    if spatial:
+        rows.append(("AXHeading", dev_id, "Spatial Audio", 0))
+        rows += [("AXCheckBox", dev_id, m, 1 if i == 0 else 0) for i, m in enumerate(spatial)]
+    rows.append(("AXButton", "", "Sound Settings…", 0))
+    return rows
+
+
+def pick(rows, device="AirPods Pro", layout3="auto"):
+    compiled = os.path.join(TMP, "anc-under-test.scpt")
+    if not os.path.exists(compiled):
+        subprocess.run(["osacompile", "-o", compiled, os.path.join(SRC, "anc.applescript")], check=True)
+    harness = os.path.join(TMP, "harness.applescript")
+    with open(harness, "w") as f:
+        f.write(HARNESS)
+    argv = [compiled, device, layout3] + ["\t".join([r[0], r[1], r[2], str(r[3])]) for r in rows]
+    out = subprocess.run(["osascript", harness, *argv], capture_output=True, text=True, timeout=30)
+    assert out.returncode == 0, out.stderr
+    idx, names = out.stdout.strip().split("|")
+    labels = [rows[int(i) - 1][2] for i in idx.split(",")] if idx else []
+    return labels, names.split(",") if names else []
+
+
+class ANCRowPickingTests(unittest.TestCase):
+    """The Control Center row logic of anc.applescript, fed with simulated Sound menus."""
+
+    def test_english_pro(self):
+        self.assertEqual(pick(sound_menu()), (["Transparency", "Adaptive", "Noise Cancellation"],) * 2)
+
+    def test_english_with_off(self):
+        rows = sound_menu(modes=("Off", "Transparency", "Adaptive", "Noise Cancellation"))
+        self.assertEqual(pick(rows)[1], ["Off", "Transparency", "Adaptive", "Noise Cancellation"])
+
+    def test_german(self):
+        rows = sound_menu(modes=("Transparenz", "Adaptiv", "Geräuschunterdrückung"), spatial=("Aus", "Fixiert", "Kopfbewegung"))
+        labels, names = pick(rows)
+        self.assertEqual(labels, ["Transparenz", "Adaptiv", "Geräuschunterdrückung"])
+        self.assertEqual(names, ["Transparency", "Adaptive", "Noise Cancellation"])
+
+    def test_max_in_french(self):
+        rows = sound_menu("AirPods Max de Zoé", modes=("Désactivé", "Transparence", "Réduction du bruit"), spatial=("Désactivé", "Fixe", "Suivi"))
+        labels, names = pick(rows, "AirPods Max de Zoé")
+        self.assertEqual(labels, ["Désactivé", "Transparence", "Réduction du bruit"])
+        self.assertEqual(names, ["Off", "Transparency", "Noise Cancellation"])
+        self.assertEqual(pick(rows, "AirPods Max de Zoé", "adaptive")[1], ["Transparency", "Adaptive", "Noise Cancellation"])
+
+    def test_spatial_audio_only_is_never_picked(self):
+        self.assertEqual(pick(sound_menu(modes=None)), ([], []))
+
+    def test_device_list_is_never_picked(self):
+        # AirPods not the current output, three devices under an Output heading that has an identifier
+        rows = sound_menu(modes=None, spatial=None, selected=False, output_heading_id="output-section")
+        rows.insert(3, ("AXCheckBox", "sound-device-LG HDR 4K", "LG HDR 4K", 0))
+        self.assertEqual(pick(rows), ([], []))
+
+    def test_other_language_without_selected_device_is_refused(self):
+        rows = sound_menu(modes=("Transparenz", "Adaptiv", "Geräuschunterdrückung"), spatial=("Aus", "Fixiert", "Kopfbewegung"), selected=False)
+        self.assertEqual(pick(rows), ([], []))
+
+    def test_other_device_name_is_refused(self):
+        rows = sound_menu(modes=("Transparenz", "Adaptiv", "Geräuschunterdrückung"), spatial=None)
+        self.assertEqual(pick(rows, "Other AirPods"), ([], []))
+
+
 class ActionTests(unittest.TestCase):
     def test_invalid_actions(self):
         self.assertEqual(act("not json"), "Invalid action")
@@ -642,6 +739,38 @@ class AuditPass1Tests(unittest.TestCase):
         fx = fixture(displays=[mac(), dell(), dell(id=3, uuid=UUID_DELL2, x=4288)])
         it = sf("bright", "", fx, bins=bins)
         self.assertIn("identical displays", find(it, "DELL U2720Q (1): brightness not available")["subtitle"])
+
+
+class AuditPass2Tests(unittest.TestCase):
+    """Regressions for bugs found in the second audit."""
+
+    def twins(self, x2=1728, x3=4288):
+        # identical monitors without serial numbers: same UUID, different display IDs
+        return [mac(), dell(id=2, uuid=UUID_DELL1, x=x2), dell(id=3, uuid=UUID_DELL1, x=x3)]
+
+    def test_resolution_on_twin_with_shared_uuid(self):
+        fx = fixture(displays=self.twins())
+        it = sf("res", "dell 2560", fx)
+        self.assertEqual(len(it), 2)
+        arg = [i["arg"] for i in it if json.loads(i["arg"])["id"] == 3][0]
+        self.assertIn("display=3", act(arg, fixture(displays=[mac(), dell(id=2, uuid=UUID_DELL1, cur=DELL_MODES[1]), dell(id=3, uuid=UUID_DELL1, x=4288, cur=DELL_MODES[1])])))
+
+    def test_layout_with_twins_is_one_to_one(self):
+        d = data_dir("pass2-twins")
+        act({"op": "layout-save", "name": "Twins"}, fixture(displays=self.twins()), data=d)
+        self.assertTrue(find(sf("layout", "", fixture(displays=self.twins()), data=d), "✓ Twins"))
+        swapped = fixture(displays=self.twins(x2=4288, x3=1728))
+        out = act({"op": "layout-restore", "name": "Twins"}, swapped, data=d)
+        self.assertIn("CGConfigureDisplayOrigin(display=2, x=1728, y=-200)", out)
+        self.assertIn("CGConfigureDisplayOrigin(display=3, x=4288, y=-200)", out)
+        # one twin unplugged: the other is not counted twice
+        one = fixture(displays=[mac(), dell(id=2, uuid=UUID_DELL1)])
+        self.assertIn("Missing: DELL U2720Q (2)", find(sf("layout", "", one, data=d), "Twins")["subtitle"])
+
+    def test_m1ddc_with_shared_uuid_refuses_to_guess(self):
+        bins = fake_bin("m1ddc", 'case "$*" in "display list") echo "[1] DELL U2720Q (%s)"; echo "[2] DELL U2720Q (%s)";; *) echo 50;; esac\n' % (UUID_DELL1, UUID_DELL1))
+        it = sf("bright", "", fixture(displays=self.twins()), bins=bins)
+        self.assertIn("share a UUID", find(it, "DELL U2720Q (1): brightness not available")["subtitle"])
 
 
 class RealHardwareTests(unittest.TestCase):
