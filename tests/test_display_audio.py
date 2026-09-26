@@ -61,9 +61,9 @@ DELL_MODES = [mode(2560, 1440, 1, 60, 10), mode(1920, 1080, 2, 60, 11), mode(192
               mode(1920, 1080, 1, 60, 13), mode(3840, 2160, 1, 30, 14)]
 
 
-def display(id, name, uuid, builtin=False, x=0, y=0, cur=None, modes=None, brightness=None, mirror=0):
+def display(id, name, uuid, builtin=False, x=0, y=0, cur=None, modes=None, brightness=None, mirror=0, rotation=0):
     d = {"id": id, "name": name, "uuid": uuid, "builtin": builtin, "x": x, "y": y, "mirrorOf": mirror,
-         "current": cur, "modes": modes or []}
+         "current": cur, "modes": modes or [], "rotation": rotation}
     if brightness is not None:
         d["brightness"] = brightness
     return d
@@ -380,7 +380,7 @@ class ResolutionTests(unittest.TestCase):
 
 M1DDC = r'''
 case "$*" in
-  "display list") echo "[1] DELL U2720Q (11111111-2222-3333-4444-555555555555)"; echo "[2] DELL U2720Q (66666666-7777-8888-9999-AAAAAAAAAAAA)";;
+  "display list"*) echo "[1] DELL U2720Q (11111111-2222-3333-4444-555555555555)"; echo "[2] DELL U2720Q (66666666-7777-8888-9999-AAAAAAAAAAAA)";;
   "display 1 get luminance") echo 30;;
   "display 2 get luminance") echo 80;;
   *) echo "unexpected: $*" >&2; exit 1;;
@@ -521,7 +521,8 @@ class LayoutTests(unittest.TestCase):
         saved = load(os.path.join(d, "layouts.json"))["Rotated"]
         self.assertEqual(len(saved["displayplacer"]), 2)
         self.assertIn("degree:90", saved["displayplacer"][1])
-        out = act({"op": "layout-restore", "name": "Rotated"}, fx, data=d, bins=bins)
+        moved = fixture(displays=[mac(), dell(x=-2560, y=0)])
+        out = act({"op": "layout-restore", "name": "Rotated"}, moved, data=d, bins=bins)
         self.assertIn("displayplacer 'id:37D8832A-2D66-02CA-B9F7-8F30A301B230 res:1728x1117", out)
         self.assertIn("with displayplacer", out)
 
@@ -581,9 +582,10 @@ on run argv
 	set s to load script POSIX file (item 1 of argv)
 	set dev to item 2 of argv
 	set layout3 to item 3 of argv
+	s's setLabels(item 4 of argv, item 5 of argv)
 	set infos to {}
 	set AppleScript's text item delimiters to tab
-	repeat with i from 4 to count of argv
+	repeat with i from 6 to count of argv
 		set f to text items of (item i of argv)
 		set end of infos to {kind:item 1 of f, ident:item 2 of f, lbl:item 3 of f, checked:(item 4 of f is "1")}
 	end repeat
@@ -617,14 +619,14 @@ def sound_menu(device="AirPods Pro", modes=("Transparency", "Adaptive", "Noise C
     return rows
 
 
-def pick(rows, device="AirPods Pro", layout3="auto"):
+def pick(rows, device="AirPods Pro", layout3="auto", labels=("", "")):
     compiled = os.path.join(TMP, "anc-under-test.scpt")
     if not os.path.exists(compiled):
         subprocess.run(["osacompile", "-o", compiled, os.path.join(SRC, "anc.applescript")], check=True)
     harness = os.path.join(TMP, "harness.applescript")
     with open(harness, "w") as f:
         f.write(HARNESS)
-    argv = [compiled, device, layout3] + ["\t".join([r[0], r[1], r[2], str(r[3])]) for r in rows]
+    argv = [compiled, device, layout3, labels[0], labels[1]] + ["\t".join([r[0], r[1], r[2], str(r[3])]) for r in rows]
     out = subprocess.run(["osascript", harness, *argv], capture_output=True, text=True, timeout=30)
     assert out.returncode == 0, out.stderr
     idx, names = out.stdout.strip().split("|")
@@ -735,7 +737,7 @@ class AuditPass1Tests(unittest.TestCase):
         self.assertEqual(act({"op": "layout-delete", "name": "__proto__"}, fx, data=d), "Deleted “__proto__”")
 
     def test_m1ddc_identical_names_without_uuid(self):
-        bins = fake_bin("m1ddc", 'case "$*" in "display list") echo "[1] DELL U2720Q"; echo "[2] DELL U2720Q";; *) echo 50;; esac\n')
+        bins = fake_bin("m1ddc", 'case "$*" in "display list"*) echo "[1] DELL U2720Q"; echo "[2] DELL U2720Q";; *) echo 50;; esac\n')
         fx = fixture(displays=[mac(), dell(), dell(id=3, uuid=UUID_DELL2, x=4288)])
         it = sf("bright", "", fx, bins=bins)
         self.assertIn("identical displays", find(it, "DELL U2720Q (1): brightness not available")["subtitle"])
@@ -768,7 +770,7 @@ class AuditPass2Tests(unittest.TestCase):
         self.assertIn("Missing: DELL U2720Q (2)", find(sf("layout", "", one, data=d), "Twins")["subtitle"])
 
     def test_m1ddc_with_shared_uuid_refuses_to_guess(self):
-        bins = fake_bin("m1ddc", 'case "$*" in "display list") echo "[1] DELL U2720Q (%s)"; echo "[2] DELL U2720Q (%s)";; *) echo 50;; esac\n' % (UUID_DELL1, UUID_DELL1))
+        bins = fake_bin("m1ddc", 'case "$*" in "display list"*) echo "[1] DELL U2720Q (%s)"; echo "[2] DELL U2720Q (%s)";; *) echo 50;; esac\n' % (UUID_DELL1, UUID_DELL1))
         it = sf("bright", "", fixture(displays=self.twins()), bins=bins)
         self.assertIn("share a UUID", find(it, "DELL U2720Q (1): brightness not available")["subtitle"])
 
@@ -804,6 +806,131 @@ class AuditPass3Tests(unittest.TestCase):
         fx = fixture(displays=[mac(), dell()])
         self.assertEqual(sf("res", "low resolution", fx)[0]["title"], "No display mode matches “low resolution”")
         self.assertIn("3840 × 2160 · 30 Hz", titles(sf("res", "1x", fx)))
+
+
+DE_LABELS = ("Aus\tTransparenz\tAdaptiv\tGeräuschunterdrückung", "Fixiert\tKopferfassung\tStereo zu 3D")
+FR_LABELS = ("Non\tTransparence\tAdaptatif\tRéduction du bruit", "Fixe\tSuivi de la tête actif\tConvertir en stéréo spatiale")
+
+
+def loctables(tables):
+    """A fake ControlCenter Resources folder with the given {name: {lang: {key: value}}} tables."""
+    d = tempfile.mkdtemp(dir=TMP, prefix="cc-")
+    for name, t in tables.items():
+        with open(os.path.join(d, name + ".loctable"), "wb") as f:
+            plistlib.dump(t, f, fmt=plistlib.FMT_BINARY)
+    return d
+
+
+class AuditPass4Tests(unittest.TestCase):
+    """Regressions for bugs found in the fourth audit."""
+
+    def test_spatial_audio_only_in_another_language_is_never_picked(self):
+        # AirPods without noise control (AirPods 3, AirPods 4 without ANC) in German: the only run of
+        # three checkboxes is Spatial Audio. Structure alone took it for the listening modes, so
+        # "Noise Cancellation" clicked "Head Tracked".
+        rows = sound_menu(modes=None, spatial=("Aus", "Fixiert", "Kopferfassung"))
+        self.assertEqual(pick(rows, labels=DE_LABELS), ([], []))
+
+    def test_localised_labels_name_the_modes(self):
+        rows = sound_menu(modes=("Aus", "Transparenz", "Adaptiv", "Geräuschunterdrückung"), spatial=("Aus", "Fixiert", "Kopferfassung"))
+        labels, names = pick(rows, labels=DE_LABELS)
+        self.assertEqual(names, ["Off", "Transparency", "Adaptive", "Noise Cancellation"])
+        # three modes: the labels decide, not the anc_three guess
+        rows = sound_menu("AirPods Pro", modes=("Non", "Transparence", "Réduction du bruit"), spatial=("Non", "Fixe", "Suivi de la tête actif"))
+        self.assertEqual(pick(rows, labels=FR_LABELS)[1], ["Off", "Transparency", "Noise Cancellation"])
+        # English names still work with labels of another language
+        self.assertEqual(pick(sound_menu(), labels=DE_LABELS)[1], ["Transparency", "Adaptive", "Noise Cancellation"])
+
+    def test_labels_passed_to_applescript(self):
+        cc = loctables({
+            "ListeningMode": {"de": {"LISTENING_MODE_OFF": "Aus", "Transparency": "Transparenz", "Adaptive": "Adaptiv", "Noise Cancellation": "Geräuschunterdrückung"}},
+            "Sound": {"de": {"Fixed": "Fixiert", "Head Tracked": "Kopferfassung", "Spatialize Stereo": "Stereo zu 3D"}},
+        })
+        out = act({"op": "anc", "mode": "Transparency"}, fixture(audio=audio(output=92)), DA_CC_RESOURCES=cc)
+        self.assertIn("auto 'Aus\tTransparenz\tAdaptiv\tGeräuschunterdrückung' 'Fixiert\tKopferfassung\tStereo zu 3D'", out)
+        # no string tables (older macOS): empty labels, the script falls back to English and structure
+        out = act({"op": "anc", "mode": "Transparency"}, fixture(audio=audio(output=92)), DA_CC_RESOURCES=os.path.join(TMP, "nope"))
+        self.assertIn("auto '' ''", out)
+
+    def test_real_control_center_tables(self):
+        if not os.path.exists("/System/Library/CoreServices/ControlCenter.app/Contents/Resources/ListeningMode.loctable"):
+            self.skipTest("no ListeningMode.loctable on this macOS")
+        out = act({"op": "anc", "mode": "Off"}, fixture(audio=audio(output=92)))
+        line = out.splitlines()[0]
+        self.assertEqual(line.count("\t"), 3 + 2, line)  # four mode labels, three Spatial Audio labels
+
+    def test_m1ddc_selects_by_display_id(self):
+        # m1ddc 1.2+ prints the display ID: identical monitors sharing a UUID are told apart exactly
+        script = r"""case "$*" in
+  "display list detailed") printf '[1] DELL U2720Q (%s)\n - Display ID:    3\n[2] DELL U2720Q (%s)\n - Display ID:    2\n' "$U" "$U";;
+  "display id=2 get luminance") echo 20;;
+  "display id=3 get luminance") echo 90;;
+  *) echo "unexpected: $*"; exit 1;;
+esac
+""".replace("$U", UUID_DELL1)
+        bins = fake_bin("m1ddc", script)
+        twins = fixture(displays=[mac(), dell(id=2, uuid=UUID_DELL1), dell(id=3, uuid=UUID_DELL1, x=4288)])
+        it = sf("bright", "40", twins, bins=bins)
+        self.assertIn("currently 20%", find(it, "DELL U2720Q (1)")["subtitle"])
+        self.assertIn("currently 90%", find(it, "DELL U2720Q (2)")["subtitle"])
+        out = act(find(it, "All displays")["arg"], twins, bins=bins)
+        self.assertIn("m1ddc display id=2 set luminance 40", out)
+        self.assertIn("m1ddc display id=3 set luminance 40", out)
+        # a display m1ddc doesn't list is not guessed from the only other entry
+        one = fake_bin("m1ddc", "case \"$*\" in \"display list detailed\") printf '[1] LG (%s)\\n - Display ID:    9\\n' X;; *) echo 50;; esac\n")
+        self.assertIn("m1ddc does not list", find(sf("bright", "", fixture(displays=[mac(), dell()]), bins=one), "DELL U2720Q: brightness not available")["subtitle"])
+
+    def test_m1ddc_error_text_is_not_a_level(self):
+        bins = fake_bin("m1ddc", 'case "$*" in "display list"*) echo "[1] DELL U2720Q (%s)";; *) echo "DDC communication failure: 5"; exit 0;; esac\n' % UUID_DELL1)
+        it = sf("bright", "", fixture(displays=[mac(), dell()]), bins=bins)
+        self.assertIn("current level unknown", find(it, "DELL U2720Q → 100%")["subtitle"])
+
+    def test_transport_codes(self):
+        devs = [dev(1, "FW", "fw", "1394", out=2), dev(2, "AVB", "avb", "eavb", out=2), dev(3, "Phone", "cc", "ccwl", inp=1), dev(4, "Odd", "odd", "", out=2)]
+        fx = fixture(audio=audio(devs, output=1, input=3))
+        it = sf("audio", "", fx)
+        self.assertIn("FireWire", find(it, "✓ FW")["subtitle"])
+        self.assertIn("AVB", find(it, "AVB")["subtitle"])
+        self.assertIn("Continuity", find(sf("audio", "in", fx), "✓ Phone")["subtitle"])
+
+    def test_hostile_device_names(self):
+        devs = [dev(1, "constructor", "c1", "usb", out=2), dev(2, "__proto__", "p1", "usb", out=2),
+                dev(3, "__proto__", "p2", "blue", out=2), dev(4, "Evil‮SDRAWKCAB\nline2\x00", "e1", "usb", out=2)]
+        fx = fixture(audio=audio(devs, output=1))
+        t = titles(sf("audio", "", fx))
+        self.assertIn("✓ constructor", t)
+        self.assertIn("__proto__ (USB)", t)
+        self.assertIn("__proto__ (Bluetooth)", t)
+        self.assertIn("Evil SDRAWKCAB line2", t)
+        for title in t:
+            self.assertNotRegex(title, "[‪-‮⁦-⁩\x00-\x1f]")
+        arg = json.loads(find(sf("audio", "evil", fx), "Evil")["arg"])
+        self.assertEqual(arg["uid"], "e1")  # the real device, not the cleaned name
+        self.assertIn('device=4', act(json.dumps(arg), fx))
+
+    def test_layout_name_is_one_line(self):
+        d = data_dir("pass4-name")
+        fx = fixture(displays=[mac()])
+        it = sf("layout", "save Desk\nTwo‮", fx, data=d)
+        self.assertEqual(it[0]["title"], "Save “Desk Two”")
+        act(it[0]["arg"], fx, data=d)
+        self.assertEqual(list(load(os.path.join(d, "layouts.json"))), ["Desk Two"])
+
+    def test_displayplacer_not_run_when_already_current(self):
+        d = data_dir("pass4-dp")
+        good = fake_bin("displayplacer", DISPLAYPLACER)
+        fx = fixture(displays=[mac(), dell()])
+        act({"op": "layout-save", "name": "Desk"}, fx, data=d, bins=good)
+        moved = fixture(displays=[mac(), dell(x=-2560, y=0)])
+        # already current: displayplacer isn't run at all
+        self.assertIn("already the current", act({"op": "layout-restore", "name": "Desk"}, fx, data=d, bins=good))
+        self.assertIn("displayplacer '", act({"op": "layout-restore", "name": "Desk"}, moved, data=d, bins=good))
+
+    def test_rotation_is_part_of_the_arrangement(self):
+        d = data_dir("pass4-rot")
+        act({"op": "layout-save", "name": "Portrait"}, fixture(displays=[mac(), dell(rotation=90)]), data=d)
+        self.assertFalse(find(sf("layout", "", fixture(displays=[mac(), dell()]), data=d), "Portrait")["title"].startswith("✓"))
+        self.assertTrue(find(sf("layout", "", fixture(displays=[mac(), dell(rotation=90)]), data=d), "✓ Portrait"))
 
 
 class RealHardwareTests(unittest.TestCase):

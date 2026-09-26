@@ -41,6 +41,15 @@ function matches(query, ...hay) {
   return words.every((w) => h.includes(w));
 }
 
+// Display text: no control characters or bidi overrides (they can reorder or hide a title).
+// The real value stays in `arg`.
+function clean(s) {
+  return String(s)
+    .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function icon(name) {
   return { path: `icons/${name}.png` };
 }
@@ -60,10 +69,14 @@ function action(op, fields = {}) {
 
 // Append " (2)", " (3)" … to rows whose names collide, so identical devices stay distinguishable.
 function disambiguate(list, nameOf, hintOf) {
-  const groups = {};
-  for (const x of list) (groups[nameOf(x)] = groups[nameOf(x)] || []).push(x);
+  const groups = new Map(); // not {}: a device may be called "constructor" or "__proto__"
+  for (const x of list) {
+    const n = clean(nameOf(x));
+    if (!groups.has(n)) groups.set(n, []);
+    groups.get(n).push(x);
+  }
   const label = new Map();
-  for (const [name, xs] of Object.entries(groups)) {
+  for (const [name, xs] of groups) {
     if (xs.length === 1) {
       label.set(xs[0], name);
       continue;
@@ -193,7 +206,7 @@ function fourcc(s) {
   return ((s.charCodeAt(0) << 24) | (s.charCodeAt(1) << 16) | (s.charCodeAt(2) << 8) | s.charCodeAt(3)) >>> 0;
 }
 function fourccStr(n) {
-  return n === null ? "" : String.fromCharCode((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
+  return !n ? "" : String.fromCharCode((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
 }
 
 // ---------- CoreAudio ----------
@@ -249,13 +262,14 @@ function caSetU32(obj, sel, value, scope) {
   return $.AudioObjectSetPropertyData(obj, caAddr(sel, scope).mutableBytes, 0, null, 4, mdata(u32bin([value])).mutableBytes);
 }
 
-const TRANSPORTS = {
+// kAudioDeviceTransportType* four-char codes (AudioHardwareBase.h), trailing spaces trimmed
+const TRANSPORTS = new Map(Object.entries({
   bltn: "Built-in", usb: "USB", blue: "Bluetooth", blea: "Bluetooth LE", hdmi: "HDMI", dprt: "DisplayPort",
-  airp: "AirPlay", grup: "Aggregate", virt: "Virtual", thun: "Thunderbolt", fwre: "FireWire", pci: "PCI",
-  avb: "AVB", ccam: "Continuity", cont: "Continuity",
-};
+  airp: "AirPlay", grup: "Aggregate", virt: "Virtual", thun: "Thunderbolt", 1394: "FireWire", pci: "PCI",
+  eavb: "AVB", ccap: "Continuity", ccwd: "Continuity", ccwl: "Continuity",
+}));
 function transportLabel(t) {
-  return TRANSPORTS[String(t || "").trim()] || "";
+  return TRANSPORTS.get(String(t || "").trim()) || "";
 }
 
 // ---------- CoreGraphics ----------
@@ -482,17 +496,27 @@ function configureDisplays(ops) {
   const ref = Ref();
   if ($.CGBeginDisplayConfiguration(ref) !== 0) throw new Error("Could not start a display configuration");
   const config = ref[0];
-  for (const o of ops) {
-    let st = 0;
-    if (o.kind === "mode") st = $.CGConfigureDisplayWithDisplayMode(config, o.id, o.mode.ref, $.NSDictionary.dictionary);
-    if (o.kind === "origin") st = $.CGConfigureDisplayOrigin(config, o.id, o.x, o.y);
-    if (o.kind === "mirror") st = $.CGConfigureDisplayMirrorOfDisplay(config, o.id, o.master);
-    if (st !== 0) {
-      $.CGCancelDisplayConfiguration(config);
-      throw new Error(`CoreGraphics error ${st}`);
+  if (!config) throw new Error("Could not start a display configuration");
+  // Every path ends in exactly one Complete or Cancel (both invalidate the configuration),
+  // including a JavaScript exception thrown by the bridge in the middle of the loop.
+  let st = 0;
+  try {
+    for (const o of ops) {
+      if (o.kind === "mode") st = $.CGConfigureDisplayWithDisplayMode(config, o.id, o.mode.ref, $.NSDictionary.dictionary);
+      else if (o.kind === "origin") st = $.CGConfigureDisplayOrigin(config, o.id, o.x, o.y);
+      else if (o.kind === "mirror") st = $.CGConfigureDisplayMirrorOfDisplay(config, o.id, o.master);
+      else st = -1;
+      if (st !== 0) break;
     }
+  } catch (e) {
+    $.CGCancelDisplayConfiguration(config);
+    throw e;
   }
-  const st = $.CGCompleteDisplayConfiguration(config, kCGConfigurePermanently);
+  if (st !== 0) {
+    $.CGCancelDisplayConfiguration(config);
+    throw new Error(`CoreGraphics error ${st}`);
+  }
+  st = $.CGCompleteDisplayConfiguration(config, kCGConfigurePermanently);
   if (st !== 0) throw new Error(`CoreGraphics error ${st}`);
 }
 
@@ -555,7 +579,7 @@ function currentDeviceName(scope) {
   const defs = HW.audioDefaults();
   const id = scope === "output" ? defs.output : defs.input;
   const d = HW.audioDevices().find((x) => x.id === id);
-  return d ? d.name : null;
+  return d ? clean(d.name) : null;
 }
 
 function parseLevel(q) {
@@ -566,7 +590,7 @@ function parseLevel(q) {
 function audioItems(query) {
   let q = query.trim();
   let scope = "output";
-  const m = /^(in|input|inputs|out|output|outputs)\b\s*(.*)$/i.exec(q);
+  const m = /^(in|input|inputs|out|output|outputs)\b\s*([\s\S]*)$/i.exec(q);
   if (m) {
     scope = /^in/i.test(m[1]) ? "input" : "output";
     q = m[2];
@@ -846,13 +870,24 @@ function betterDisplayCLI() {
   return null;
 }
 
+// `m1ddc display list detailed` prints "[1] Name (UUID)" per display and, since v1.2.0, a
+// " - Display ID:    N" line under it. With that ID the display is selected as `id=N`, which is
+// exact even for identical monitors; older versions fall back to the list number.
 function m1ddcDisplays(bin) {
-  const r = spawn(bin, ["display", "list"], 4);
+  const r = spawn(bin, ["display", "list", "detailed"], 4);
   if (r.status !== 0) return [];
   const out = [];
   for (const line of r.out.split("\n")) {
     const m = /^\s*\[(\d+)\]\s+(.*?)\s*(?:\(([0-9A-Fa-f-]{36})\))?\s*$/.exec(line);
-    if (m) out.push({ index: m[1], name: m[2], uuid: (m[3] || "").toUpperCase() });
+    if (m) {
+      out.push({ index: m[1], select: m[1], name: m[2], uuid: (m[3] || "").toUpperCase(), displayId: null });
+      continue;
+    }
+    const id = /^\s*-\s*Display ID:\s*(\d+)\s*$/.exec(line);
+    if (id && out.length) {
+      out[out.length - 1].displayId = Number(id[1]);
+      out[out.length - 1].select = `id=${id[1]}`;
+    }
   }
   return out;
 }
@@ -878,7 +913,8 @@ function brightnessTargets(list) {
       m1list = m1 ? m1ddcDisplays(m1) : [];
     }
     if (m1) {
-      const byUuid = m1list.filter((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
+      const byId = m1list.find((x) => x.displayId === d.id);
+      const byUuid = byId ? [byId] : m1list.filter((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
       let t = byUuid.length === 1 ? byUuid[0] : null;
       let reason = byUuid.length > 1 ? "identical displays share a UUID, so m1ddc can't tell them apart" : "m1ddc does not list this display";
       if (!t && !byUuid.length) {
@@ -886,11 +922,12 @@ function brightnessTargets(list) {
         if (byName.length === 1) t = byName[0];
         else if (byName.length > 1) reason = "m1ddc can't tell identical displays apart without their UUIDs";
       }
-      if (!t && m1list.length === 1 && externals.length === 1) t = m1list[0];
+      // a newer m1ddc that reports display IDs and doesn't list this one can't control it
+      if (!t && !m1list.some((x) => x.displayId !== null) && m1list.length === 1 && externals.length === 1) t = m1list[0];
       if (t) {
-        const r = spawn(m1, ["display", t.index, "get", "luminance"], 3);
-        const v = parseFloat(r.out);
-        return { d, via: "m1ddc", bin: m1, index: t.index, value: r.status === 0 && isFinite(v) ? v : null };
+        const r = spawn(m1, ["display", t.select, "get", "luminance"], 3);
+        const v = /^\s*(\d+(?:\.\d+)?)\s*$/.test(r.out) ? parseFloat(r.out) : NaN; // errors go to stdout too
+        return { d, via: "m1ddc", bin: m1, index: t.select, value: r.status === 0 && isFinite(v) ? v : null };
       }
       return { d, via: null, reason };
     }
@@ -1045,6 +1082,7 @@ function snapshot(list) {
     y: d.y,
     mirrorOf: d.mirrorOf && byId[d.mirrorOf] ? byId[d.mirrorOf].uuid : null,
     mirrorOfId: d.mirrorOf || null,
+    rotation: d.rotation || 0,
     mode: d.current ? { w: d.current.w, h: d.current.h, pw: d.current.pw, ph: d.current.ph, hz: d.current.hz, io: d.current.io } : null,
   }));
 }
@@ -1058,7 +1096,9 @@ function describeArrangement(snap) {
 function sameArrangement(saved, now) {
   if (!saved || saved.length !== now.length) return false;
   return matchSaved(saved, now).every(
-    ([s, n]) => n && n.x === s.x && n.y === s.y && (n.mirrorOf || null) === (s.mirrorOf || null) && sameMode(n.mode, s.mode)
+    ([s, n]) =>
+      n && n.x === s.x && n.y === s.y && (n.mirrorOf || null) === (s.mirrorOf || null) && sameMode(n.mode, s.mode) &&
+      (s.rotation === undefined || (n.rotation || 0) === s.rotation)
   );
 }
 
@@ -1089,8 +1129,8 @@ function layoutItems(query) {
   const engine = dp ? "via displayplacer" : "resolutions and positions";
   const q = query.trim();
   const items = [];
-  const save = /^save\b\s*(.*)$/i.exec(q);
-  const name = (save ? save[1] : q).trim();
+  const save = /^save\b\s*([\s\S]*)$/i.exec(q);
+  const name = clean(save ? save[1] : q);
   const saveRow = () =>
     name
       ? {
@@ -1111,13 +1151,13 @@ function layoutItems(query) {
     const missing = missingDisplays(l.displays, list);
     const arg = action("layout-restore", { name: n });
     return {
-      title: `${current ? "✓ " : ""}${n}`,
+      title: `${current ? "✓ " : ""}${clean(n)}`,
       subtitle: missing.length
         ? `Missing: ${missing.join(", ")} · ↩ Restore the rest`
         : `${current ? "Current arrangement" : "↩ Restore"} · ${describeArrangement(l.displays || [])}`,
       arg,
       icon: icon("layout"),
-      mods: { alt: { arg: action("layout-delete", { name: n }), subtitle: `Delete “${n}”` } },
+      mods: { alt: { arg: action("layout-delete", { name: n }), subtitle: `Delete “${clean(n)}”` } },
     };
   });
   if (!q)
@@ -1129,7 +1169,7 @@ function layoutItems(query) {
 }
 
 function layoutSave(a) {
-  const name = String(a.name || "").trim();
+  const name = clean(a.name || "");
   if (!name) return "Type a name for the arrangement";
   const list = displays();
   if (!list.length) return "No displays found";
@@ -1154,14 +1194,19 @@ function layoutRestore(a) {
   const missing = missingDisplays(l.displays, list);
   const present = (l.displays || []).length - missing.length;
   if (!present) return `None of the displays in “${a.name}” are connected`;
+  // nothing to do: don't make every display flicker through a reconfiguration
+  if (!missing.length && sameArrangement(l.displays, snapshot(list))) return `“${a.name}” is already the current arrangement`;
   const dp = which("displayplacer");
-  if (dp && l.displayplacer && !missing.length) {
-    if (DRY) dry([dp, ...l.displayplacer].map(shellQuote).join(" "));
-    else {
-      const r = spawn(dp, l.displayplacer, 20);
-      if (r.status !== 0) return `displayplacer failed: ${(r.err || r.out).trim().split("\n")[0]}`;
+  let note = "";
+  if (dp && Array.isArray(l.displayplacer) && l.displayplacer.length && !missing.length) {
+    if (DRY) {
+      dry([dp, ...l.displayplacer].map(shellQuote).join(" "));
+      return `Restored “${a.name}” with displayplacer`;
     }
-    return `Restored “${a.name}” with displayplacer`;
+    const r = spawn(dp, l.displayplacer.map(String), 20);
+    if (r.status === 0) return `Restored “${a.name}” with displayplacer`;
+    // Its screen IDs can change (see its README): fall back to the saved positions and modes.
+    note = `displayplacer failed (${(r.err || r.out || "no output").trim().split("\n")[0]}), used the saved positions`;
   }
   const ops = [];
   for (const [s, d] of matchSaved(l.displays, list)) {
@@ -1179,9 +1224,9 @@ function layoutRestore(a) {
     }
     if (d.x !== s.x || d.y !== s.y || d.mirrorOf) ops.push({ kind: "origin", id: d.id, x: s.x, y: s.y });
   }
-  if (!ops.length) return `“${a.name}” is already the current arrangement`;
+  if (!ops.length) return [`“${a.name}” is already the current arrangement`, note].filter(Boolean).join("\n");
   configureDisplays(ops);
-  return [`Restored “${a.name}”`, missing.length ? `Not connected: ${missing.join(", ")}` : ""].filter(Boolean).join("\n");
+  return [`Restored “${a.name}”`, missing.length ? `Not connected: ${missing.join(", ")}` : "", note].filter(Boolean).join("\n");
 }
 
 function layoutDelete(a) {
@@ -1219,14 +1264,14 @@ function ancItems(query) {
   const wireless = isWireless(out);
   const items = [];
   if (!wireless)
-    items.push(info("AirPods aren't the current output", out ? `Output is ${out.name} · connect your AirPods first` : "No output device", "info"));
+    items.push(info("AirPods aren't the current output", out ? `Output is ${clean(out.name)} · connect your AirPods first` : "No output device", "info"));
   const known = state.device && out && state.device === out.name ? state.mode : null;
   for (const m of ANC_MODES) {
     if (query && !matches(query, m.key)) continue;
     const isCur = known === m.key;
     items.push({
       title: `${isCur ? "✓ " : ""}${m.key}`,
-      subtitle: [wireless ? out.name : "", isCur ? "Last set" : m.note].filter(Boolean).join(" · "),
+      subtitle: [wireless ? clean(out.name) : "", isCur ? "Last set" : m.note].filter(Boolean).join(" · "),
       arg: action("anc", { mode: m.key }),
       icon: icon(m.icon),
     });
@@ -1248,6 +1293,35 @@ function isWireless(d) {
   return !!d && (d.transport === "blue" || d.transport === "blea");
 }
 
+// The Sound menu's own words for the listening modes and the Spatial Audio choices, in the
+// language Control Center uses, read from its string tables. anc.applescript then recognises
+// the rows by label in any language instead of guessing from their position.
+const CC_RESOURCES = "/System/Library/CoreServices/ControlCenter.app/Contents/Resources";
+function ancLabels() {
+  const dir = env("DA_CC_RESOURCES", CC_RESOURCES);
+  const table = (name) => {
+    const d = $.NSDictionary.dictionaryWithContentsOfFile(`${dir}/${name}.loctable`);
+    return d.isNil() ? null : d;
+  };
+  const listening = table("ListeningMode");
+  if (!listening) return null;
+  const sound = table("Sound");
+  const langs = ObjC.deepUnwrap(listening.allKeys).filter((k) => k !== "LocProvenance");
+  const pick = $.NSBundle.preferredLocalizationsFromArrayForPreferences($(langs), $.NSLocale.preferredLanguages);
+  const lang = pick.count ? pick.objectAtIndex(0).js : "en";
+  const strings = (t) => {
+    const o = t ? ObjC.deepUnwrap(t.objectForKey(lang)) : null;
+    return o && typeof o === "object" ? o : {};
+  };
+  const lm = strings(listening);
+  const sd = strings(sound);
+  const modes = ["LISTENING_MODE_OFF", "Transparency", "Adaptive", "Noise Cancellation"].map((k) => (typeof lm[k] === "string" ? lm[k] : ""));
+  if (!modes[1] || !modes[3]) return null;
+  const other = ["Fixed", "Head Tracked", "Spatialize Stereo"].map((k) => sd[k]).filter((v) => typeof v === "string" && v);
+  const one = (v) => String(v).replace(/[\t\n\r]/g, " ");
+  return { modes: modes.map(one).join("\t"), other: other.map(one).join("\t") };
+}
+
 function ancAction(a) {
   const out = ancOutput();
   const device = out ? out.name : "";
@@ -1255,7 +1329,13 @@ function ancAction(a) {
   if (modes.some((m) => !ANC_MODES.find((x) => x.key === m))) return "Unknown listening mode";
   // don't open Control Center for nothing
   if (!isWireless(out)) return `Connect your AirPods first: the output is ${device || "not set"}`;
-  const argv = [...modes.slice(0, 1), modes[1] || "", device, env("anc_three", "auto")];
+  let labels = null;
+  try {
+    labels = ancLabels();
+  } catch (e) {
+    labels = null; // fall back to the English names and the row structure
+  }
+  const argv = [...modes.slice(0, 1), modes[1] || "", device, env("anc_three", "auto"), labels ? labels.modes : "", labels ? labels.other : ""];
   const script = `${$.NSFileManager.defaultManager.currentDirectoryPath.js}/anc.applescript`;
   let res;
   if (DRY) {
@@ -1282,14 +1362,14 @@ function deviceAction(a) {
   const scope = a.scope === "input" ? "input" : "output";
   // UIDs survive reconnects and sleep; device IDs don't. Fall back to the ID only without a UID.
   const dev = usableDevices(scope).find((d) => (a.uid ? d.uid === a.uid : d.id === a.id));
-  if (!dev) return `${a.name || "That device"} is no longer connected`;
+  if (!dev) return `${clean(a.name || "") || "That device"} is no longer connected`;
   setDefaultDevice(scope, dev);
   if (a.system && scope === "output") {
-    if (dev.canSys === false) return `${dev.name} is now the output (it can't play alerts)`;
+    if (dev.canSys === false) return `${clean(dev.name)} is now the output (it can't play alerts)`;
     setDefaultDevice("system", dev);
-    return `🔊 ${dev.name} · output and alerts`;
+    return `🔊 ${clean(dev.name)} · output and alerts`;
   }
-  return `${scope === "output" ? "🔊" : "🎙"} ${dev.name}`;
+  return `${scope === "output" ? "🔊" : "🎙"} ${clean(dev.name)}`;
 }
 
 function volumeAction(a) {

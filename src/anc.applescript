@@ -1,6 +1,6 @@
 -- Set the AirPods listening mode through the Sound menu of Control Center.
 --
---   osascript anc.applescript <mode> [<other mode>] [<device name>] [auto|off|adaptive]
+--   osascript anc.applescript <mode> [<other mode>] [<device name>] [auto|off|adaptive] [<labels>] [<other labels>]
 --
 -- <mode> and <other mode> are Off, Transparency, Adaptive or Noise Cancellation. With <other mode>
 -- it toggles: <mode> is selected unless it already is, in which case <other mode> is.
@@ -8,15 +8,56 @@
 --
 -- macOS has no public API for listening modes (IOBluetoothDevice's private setListeningMode: no
 -- longer reaches the AirPods on recent macOS), so this drives the Sound menu the way a person would.
--- To stay independent of the system language it never matches localised text:
+-- To stay independent of the system language:
 --   * the Sound menu extra is found by its AXIdentifier "com.apple.menuextra.sound",
 --     or through Control Center's "controlcenter-volume" tile when Sound isn't in the menu bar;
 --   * the Listening Mode rows are found by structure: below the selected output device's row, the
---     first run of 3-4 checkboxes after a heading. English labels, when present, confirm the run
---     (and rule out Spatial Audio's Off / Fixed / Head Tracked) and name the modes.
+--     first run of 3-4 checkboxes after a heading. Their labels confirm the run (and rule out Spatial
+--     Audio's Off / Fixed / Head Tracked) and name the modes: <labels> are Control Center's own words
+--     for Off, Transparency, Adaptive and Noise Cancellation in the current language, and <other
+--     labels> its words for Fixed, Head Tracked and Spatialize Stereo (tab-separated, read from its
+--     string tables by displayaudio.js). English names always work too.
 -- All data arrives as argv, never interpolated into code.
 
 property englishModes : {"Off", "Transparency", "Adaptive", "Noise Cancellation"}
+property englishOther : {"Fixed", "Head Tracked", "Head-Tracked", "Spatialize Stereo"}
+-- localised labels (see setLabels); "" where unknown
+property modeLabels : {"", "", "", ""}
+property otherLabels : {}
+
+on splitTabs(t)
+	if t is "" then return {}
+	set saved to AppleScript's text item delimiters
+	set AppleScript's text item delimiters to tab
+	set parts to text items of t
+	set AppleScript's text item delimiters to saved
+	return parts
+end splitTabs
+
+on setLabels(modesText, otherText)
+	set modeLabels to {"", "", "", ""}
+	set parts to my splitTabs(modesText)
+	if (count of parts) is 4 then set modeLabels to parts
+	set otherLabels to {}
+	repeat with p in my splitTabs(otherText)
+		if (contents of p) is not "" then set end of otherLabels to (contents of p)
+	end repeat
+end setLabels
+
+-- The English name of a listening-mode label, or "" when it isn't one.
+on modeKey(l)
+	if l is "" then return ""
+	repeat with i from 1 to 4
+		if (item i of modeLabels) is not "" and l is (item i of modeLabels) then return item i of englishModes
+	end repeat
+	if englishModes contains l then return l
+	return ""
+end modeKey
+
+on isOtherLabel(l)
+	if l is "" then return false
+	return (englishOther contains l) or (otherLabels contains l)
+end isOtherLabel
 
 on run argv
 	set wantA to item 1 of argv
@@ -26,6 +67,11 @@ on run argv
 	if (count of argv) > 2 then set deviceName to item 3 of argv
 	set threeLayout to "auto"
 	if (count of argv) > 3 then set threeLayout to item 4 of argv
+	set labelText to ""
+	set otherText to ""
+	if (count of argv) > 4 then set labelText to item 5 of argv
+	if (count of argv) > 5 then set otherText to item 6 of argv
+	my setLabels(labelText, otherText)
 
 	try
 		tell application "System Events" to count UI elements of process "ControlCenter"
@@ -281,18 +327,20 @@ on deviceNameOf(ident)
 	return ""
 end deviceNameOf
 
--- "modes" when the labels are English listening modes, "other" when they belong to another section
--- (Spatial Audio's Off / Fixed / Head Tracked, or output devices), "unknown" otherwise (other languages).
+-- "modes" when the labels are listening modes, "other" when they belong to another section
+-- (Spatial Audio's Off / Fixed / Head Tracked, or output devices), "unknown" otherwise (a language
+-- whose labels weren't provided).
 on runVerdict(infos)
 	set known to 0
 	set anchors to 0
 	repeat with c in infos
 		set l to lbl of c
 		set dn to my deviceNameOf(ident of c)
-		if l is in {"Fixed", "Head Tracked", "Head-Tracked"} then return "other"
+		if my isOtherLabel(l) then return "other"
 		if dn is not "" and l starts with dn then return "other"
-		if englishModes contains l then set known to known + 1
-		if l is in {"Transparency", "Noise Cancellation", "Adaptive"} then set anchors to anchors + 1
+		set k to my modeKey(l)
+		if k is not "" then set known to known + 1
+		if k is in {"Transparency", "Noise Cancellation", "Adaptive"} then set anchors to anchors + 1
 	end repeat
 	if known is (count of infos) and anchors > 0 then return "modes"
 	if known > 0 then return "other"
@@ -330,33 +378,37 @@ on pickRows(infos, deviceName)
 				set verdict to my runVerdict(seq)
 				if verdict is "modes" then return idx
 				-- in other languages trust structure only below the selected device's row
-				if verdict is "unknown" and devIdx > 0 then return idx
+				-- (only when no labels are known: with them, an unrecognised run is some other section)
+				if verdict is "unknown" and devIdx > 0 and (item 2 of modeLabels) is "" then return idx
 			end if
 		end if
 	end repeat
-	-- fallback: checkboxes with English mode names; "Off" only right before "Transparency"
+	-- fallback: checkboxes with mode names; "Off" only right before "Transparency"
 	-- (Spatial Audio has an "Off" too)
 	set found to {}
 	repeat with i from 1 to n
 		set el to item i of infos
 		if kind of el is "AXCheckBox" then
-			if lbl of el is in {"Transparency", "Adaptive", "Noise Cancellation"} then
+			set k to my modeKey(lbl of el)
+			if k is in {"Transparency", "Adaptive", "Noise Cancellation"} then
 				set end of found to i
-			else if lbl of el is "Off" and i < n then
-				if lbl of (item (i + 1) of infos) is "Transparency" then set end of found to i
+			else if k is "Off" and i < n then
+				if my modeKey(lbl of (item (i + 1) of infos)) is "Transparency" then set end of found to i
 			end if
 		end if
 	end repeat
 	return found
 end pickRows
 
--- The mode name of each row: from English labels when present, else from the row count.
+-- The mode name of each row: from its label when known, else from the row count.
 on namesFor(labels, deviceName, threeLayout)
-	set allEnglish to true
+	set mapped to {}
 	repeat with l in labels
-		if not (englishModes contains (contents of l)) then set allEnglish to false
+		set k to my modeKey(contents of l)
+		if k is "" then exit repeat
+		set end of mapped to k
 	end repeat
-	if allEnglish then return labels
+	if (count of mapped) is (count of labels) then return mapped
 	set n to count of labels
 	if n is 4 then return {"Off", "Transparency", "Adaptive", "Noise Cancellation"}
 	if n is 3 then
