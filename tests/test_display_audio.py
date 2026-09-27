@@ -555,7 +555,7 @@ class LayoutTests(unittest.TestCase):
 class ANCTests(unittest.TestCase):
     def test_not_airpods(self):
         it = sf("anc")
-        self.assertEqual(it[0]["title"], "AirPods aren't the current output")
+        self.assertEqual(it[0]["title"], "AirPods aren’t the current output")
         self.assertEqual(titles(it)[1:], ["Off", "Transparency", "Adaptive", "Noise Cancellation"])
 
     def test_set_mode_dry_run_and_state(self):
@@ -805,7 +805,7 @@ class AuditPass3Tests(unittest.TestCase):
     def test_betterdisplay_without_the_display(self):
         bins = fake_bin("betterdisplaycli", "exit 1\n")
         it = sf("bright", "", fixture(displays=[mac(), dell()]), bins=bins)
-        self.assertIn("BetterDisplay can't control", find(it, "DELL U2720Q: brightness not available")["subtitle"])
+        self.assertIn("BetterDisplay can’t control", find(it, "DELL U2720Q: brightness not available")["subtitle"])
 
     def test_anc_hotkey_without_airpods_does_not_open_control_center(self):
         out = act({"op": "anc-toggle"})
@@ -1183,7 +1183,7 @@ class Round4Tests(unittest.TestCase):
             out = act({"op": "layout-save", "name": "Desk"}, data=d)
         finally:
             os.chmod(d, 0o700)
-        self.assertIn("Could not save “Desk”", out)
+        self.assertIn("Couldn’t save “Desk”", out)
 
 
 class RealHardwareTests(unittest.TestCase):

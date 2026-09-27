@@ -536,9 +536,9 @@ function configureDisplays(ops) {
   }
   cg();
   const ref = Ref();
-  if ($.CGBeginDisplayConfiguration(ref) !== 0) throw new Error("Could not start a display configuration");
+  if ($.CGBeginDisplayConfiguration(ref) !== 0) throw new Error("Couldn’t start a display configuration");
   const config = ref[0];
-  if (!config) throw new Error("Could not start a display configuration");
+  if (!config) throw new Error("Couldn’t start a display configuration");
   // Every path ends in exactly one Complete or Cancel (both invalidate the configuration),
   // including a JavaScript exception thrown by the bridge in the middle of the loop.
   let st = 0;
@@ -650,7 +650,7 @@ function deviceRows(scope, query, opts = {}) {
     if (scope === "output")
       row.mods = {
         cmd: d.canSys === false
-          ? { arg, valid: false, subtitle: "This device can't play alerts and sound effects" }
+          ? { arg, valid: false, subtitle: "This device can’t play alerts and sound effects" }
           : { arg: action("device", { scope, uid: d.uid, id: d.id, name: d.name, system: true }), subtitle: "Set as output and for alerts and sound effects" },
       };
     else row.mods = { cmd: { arg, subtitle: `Set as ${scope}` } };
@@ -738,7 +738,7 @@ function audioItems(query) {
   try {
     rows = deviceRows(scope, hiddenView ? hiddenView[1] : q, { hidden: !!hiddenView, origin: "audio" });
   } catch (e) {
-    return [info("Could not read audio devices", String(e.message || e), "error")];
+    return [info("Couldn’t read audio devices", String(e.message || e), "error")];
   }
   items.push(...rows);
   if (hiddenView) {
@@ -819,7 +819,7 @@ function micItems(query) {
   if (!name) items.push(info("No input device", "Connect a microphone or check System Settings › Sound › Input", "error"));
   else if (vol.input === null) {
     // no software level (some USB microphones): use the device's own mute switch if it has one
-    if (hwMute === null) items.push(info(`${name} has no adjustable input level`, "It can't be muted from here", "error"));
+    if (hwMute === null) items.push(info(`${name} has no adjustable input level`, "It can’t be muted from here", "error"));
     else if (parseLevel(q) !== null || parseStep(q) !== null) return [info(`${name} has no adjustable input level`, "Type “mute” or “unmute” instead", "error")];
     else if (!q || matches(q, "mute unmute toggle microphone")) items.push(toggleRow(hwMute, "On"));
   } else {
@@ -841,7 +841,7 @@ function micItems(query) {
     }
     rows = deviceRows("input", /^(mute|unmute|toggle)$/i.test(q) ? "" : q, { origin: "mic" });
   } catch (e) {
-    items.push(info("Could not read audio devices", String(e.message || e), "error"));
+    items.push(info("Couldn’t read audio devices", String(e.message || e), "error"));
   }
   items.push(...rows);
   if (!items.length) items.push(info(`No input device matches “${q}”`, "Check the spelling or connect the device"));
@@ -987,7 +987,7 @@ function resItems(query) {
   try {
     list = displays();
   } catch (e) {
-    return [info("Could not read displays", String(e.message || e), "error")];
+    return [info("Couldn’t read displays", String(e.message || e), "error")];
   }
   if (!list.length) return [info("No displays found", "Wake the display or check the cable", "error")];
   const items = [];
@@ -1111,11 +1111,11 @@ function brightnessTargets(list) {
       } else {
         const byUuid = m1list.filter((x) => x.uuid && x.uuid === String(d.uuid).toUpperCase());
         if (byUuid.length === 1) t = byUuid[0];
-        else if (byUuid.length > 1) reason = "identical displays share a UUID, so m1ddc can't tell them apart";
+        else if (byUuid.length > 1) reason = "identical displays share a UUID, so m1ddc can’t tell them apart";
         else {
           const byName = m1list.filter((x) => x.name === d.name);
           if (byName.length === 1) t = byName[0];
-          else if (byName.length > 1) reason = "m1ddc can't tell identical displays apart without their UUIDs";
+          else if (byName.length > 1) reason = "m1ddc can’t tell identical displays apart without their UUIDs";
         }
         if (!t && m1list.length === 1 && externals.length === 1) t = m1list[0];
       }
@@ -1126,7 +1126,7 @@ function brightnessTargets(list) {
       }
       return { d, via: null, reason };
     }
-    if (bd && bd !== "not-running") return { d, via: null, reason: "BetterDisplay can't control this display" };
+    if (bd && bd !== "not-running") return { d, via: null, reason: "BetterDisplay can’t control this display" };
     return { d, via: null, reason: bd === "not-running" ? "open-betterdisplay" : "install" };
   });
 }
@@ -1140,7 +1140,7 @@ function brightItems(query) {
   try {
     list = displays();
   } catch (e) {
-    return [info("Could not read displays", String(e.message || e), "error")];
+    return [info("Couldn’t read displays", String(e.message || e), "error")];
   }
   if (!list.length) return [info("No displays found", "Wake the display or check the cable", "error")];
   const q = query.trim();
@@ -1210,7 +1210,7 @@ function brightAction(a) {
     cur = cur === null ? null : cur * 100;
     if (t.via === "native") {
       if (cur === null) {
-        failed.push(`${d.label} can't change brightness`);
+        failed.push(`${d.label} can’t change brightness`);
         continue;
       }
       const v = clamp01(a.rel !== null && a.rel !== undefined ? cur + a.rel : a.value);
@@ -1238,7 +1238,7 @@ function brightAction(a) {
       else {
         const r = spawn(target.bin, args, 5);
         if (r.status !== 0) {
-          failed.push(`${d.label}: ${(r.err || r.out || "command failed").trim().split("\n")[0]}`);
+          failed.push(`${d.label}: ${(r.err || r.out || "the command returned an error").trim().split("\n")[0]}`);
           continue;
         }
       }
@@ -1320,14 +1320,14 @@ function layoutItems(query) {
   try {
     list = displays();
   } catch (e) {
-    return [info("Could not read displays", String(e.message || e), "error")];
+    return [info("Couldn’t read displays", String(e.message || e), "error")];
   }
   const layouts = loadLayouts();
   // a delete waiting for confirmation (set by ⌥↩, then Alfred reopens with an empty query)
   const pending = pendingDelete();
   if (!query.trim() && pending && hasLayout(layouts, pending))
     return [
-      { title: `Delete “${clean(pending)}”?`, subtitle: "↩ Delete this arrangement · This can't be undone", arg: action("layout-delete", { name: pending }), icon: icon("error") },
+      { title: `Delete “${clean(pending)}”?`, subtitle: "↩ Delete this arrangement · This can’t be undone", arg: action("layout-delete", { name: pending }), icon: icon("error") },
       { title: "Cancel", subtitle: "Keep the arrangement", arg: action("layout-delete-cancel"), icon: icon("layout") },
     ];
   const snap = snapshot(list);
@@ -1388,7 +1388,7 @@ function layoutSave(a) {
   }
   const layouts = loadLayouts();
   layouts[name] = entry;
-  if (!writeJSON(layoutsPath(), layouts)) return `Could not save “${name}”: the workflow’s data folder isn’t writable`;
+  if (!writeJSON(layoutsPath(), layouts)) return `Couldn’t save “${name}”: the workflow’s data folder isn’t writable`;
   return `Saved “${name}” · ${list.length} display${list.length === 1 ? "" : "s"}`;
 }
 
@@ -1412,7 +1412,7 @@ function layoutRestore(a) {
     const r = spawn(dp, l.displayplacer.map(String), 20);
     if (r.status === 0) return `Restored “${a.name}” with displayplacer`;
     // Its screen IDs can change (see its README): fall back to the saved positions and modes.
-    note = `displayplacer failed (${(r.err || r.out || "no output").trim().split("\n")[0]}), used the saved positions`;
+    note = `displayplacer couldn’t apply it (${(r.err || r.out || "no output").trim().split("\n")[0]}), used the saved positions`;
   }
   const ops = [];
   for (const [s, d] of matchSaved(l.displays, list)) {
@@ -1476,7 +1476,7 @@ function layoutDelete(a) {
   const layouts = loadLayouts();
   if (!hasLayout(layouts, a.name)) return `No arrangement named “${clean(String(a.name || ""))}”`;
   delete layouts[a.name];
-  if (!writeJSON(layoutsPath(), layouts)) return `Could not delete “${a.name}”: the workflow’s data folder isn’t writable`;
+  if (!writeJSON(layoutsPath(), layouts)) return `Couldn’t delete “${a.name}”: the workflow’s data folder isn’t writable`;
   return `Deleted “${a.name}”`;
 }
 
@@ -1507,7 +1507,7 @@ function ancItems(query) {
   const wireless = isWireless(out);
   const items = [];
   if (!wireless)
-    items.push(info("AirPods aren't the current output", out ? `Output is ${clean(out.name)} · connect your AirPods first` : "No output device", "info"));
+    items.push(info("AirPods aren’t the current output", out ? `Output is ${clean(out.name)} · connect your AirPods first` : "No output device", "info"));
   const known = state.device && out && state.device === out.name ? state.mode : null;
   for (const m of ANC_MODES) {
     if (query && !matches(query, m.key)) continue;
@@ -1526,10 +1526,10 @@ function ancItems(query) {
 const ANC_ERRORS = {
   accessibility: "Alfred needs Accessibility permission: System Settings › Privacy & Security › Accessibility",
   "no-sound-item": "Show Sound in the menu bar: System Settings › Control Center › Sound › Always Show",
-  "no-popover": "The Sound menu didn't open. Try again",
+  "no-popover": "The Sound menu didn’t open. Try again",
   "no-modes": "No listening modes in the Sound menu: are your AirPods connected and the current output?",
-  unavailable: "Your AirPods don't offer that mode",
-  "click-failed": "Control Center didn't accept the change. Try again",
+  unavailable: "Your AirPods don’t offer that mode",
+  "click-failed": "Control Center didn’t accept the change. Try again",
 };
 
 function isWireless(d) {
@@ -1592,9 +1592,9 @@ function ancAction(a) {
     return `🎧 ${m[2]}${device ? ` · ${clean(device)}` : ""}`;
   }
   const e = /^error:(.*)$/.exec(text);
-  if (e) return ANC_ERRORS[e[1]] || `Could not change the listening mode (${e[1]})`;
+  if (e) return ANC_ERRORS[e[1]] || `Couldn’t change the listening mode (${e[1]})`;
   if (/assistive|not allowed|1719|25211/i.test(res.err)) return ANC_ERRORS.accessibility;
-  return `Could not change the listening mode${res.err ? `: ${res.err.trim().split("\n")[0]}` : ""}`;
+  return `Couldn’t change the listening mode${res.err ? `: ${res.err.trim().split("\n")[0]}` : ""}`;
 }
 
 // ======================================================================
@@ -1615,7 +1615,7 @@ function deviceAction(a) {
     return `🎧 ${clean(dev.name)} · output and input`;
   }
   if (a.system && scope === "output") {
-    if (dev.canSys === false) return `${clean(dev.name)} is now the output (it can't play alerts)`;
+    if (dev.canSys === false) return `${clean(dev.name)} is now the output (it can’t play alerts)`;
     setDefaultDevice("system", dev);
     return `🔊 ${clean(dev.name)} · output and alerts`;
   }
